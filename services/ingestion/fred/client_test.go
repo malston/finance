@@ -2,6 +2,7 @@ package fred_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -161,6 +162,69 @@ func TestFetchSeries_OmitsAPIKeyWhenEmpty(t *testing.T) {
 	}
 	if hasKey {
 		t.Errorf("expected no api_key param, got %q", receivedKey)
+	}
+}
+
+func TestFetchSeries_HTTP429ReturnsRetryableError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+
+	c := fred.NewClient(fred.Config{BaseURL: srv.URL, APIKey: "test-key"})
+
+	_, err := c.FetchSeries(context.Background(), "DGS10", "2026-01-01")
+	if err == nil {
+		t.Fatal("expected error for HTTP 429, got nil")
+	}
+
+	var retryErr *fred.RetryableError
+	if !errors.As(err, &retryErr) {
+		t.Fatalf("expected RetryableError, got %T: %v", err, err)
+	}
+	if retryErr.StatusCode != 429 {
+		t.Errorf("StatusCode = %d, want 429", retryErr.StatusCode)
+	}
+}
+
+func TestFetchSeries_HTTP5xxReturnsRetryableError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer srv.Close()
+
+	c := fred.NewClient(fred.Config{BaseURL: srv.URL, APIKey: "test-key"})
+
+	_, err := c.FetchSeries(context.Background(), "DGS10", "2026-01-01")
+	if err == nil {
+		t.Fatal("expected error for HTTP 502, got nil")
+	}
+
+	var retryErr *fred.RetryableError
+	if !errors.As(err, &retryErr) {
+		t.Fatalf("expected RetryableError, got %T: %v", err, err)
+	}
+	if retryErr.StatusCode != 502 {
+		t.Errorf("StatusCode = %d, want 502", retryErr.StatusCode)
+	}
+}
+
+func TestFetchSeries_HTTP400IsNotRetryable(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer srv.Close()
+
+	c := fred.NewClient(fred.Config{BaseURL: srv.URL, APIKey: "test-key"})
+
+	_, err := c.FetchSeries(context.Background(), "DGS10", "2026-01-01")
+	if err == nil {
+		t.Fatal("expected error for HTTP 400, got nil")
+	}
+
+	var retryErr *fred.RetryableError
+	if errors.As(err, &retryErr) {
+		t.Fatalf("HTTP 400 should NOT be a RetryableError, but got one: %v", retryErr)
 	}
 }
 

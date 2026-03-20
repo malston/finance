@@ -88,3 +88,19 @@ func (s *Store) WritePoints(ctx context.Context, points []TimeSeriesPoint) error
 
 	return nil
 }
+
+// LatestTimestamp returns the most recent observation time for the given ticker.
+// Returns the zero time if no data exists for that ticker.
+func (s *Store) LatestTimestamp(ctx context.Context, ticker string) (time.Time, error) {
+	var latest *time.Time
+	err := s.pool.QueryRow(ctx,
+		`SELECT MAX(time) FROM time_series WHERE ticker = $1`, ticker,
+	).Scan(&latest)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("querying latest timestamp for %s: %w", ticker, err)
+	}
+	if latest == nil {
+		return time.Time{}, nil
+	}
+	return *latest, nil
+}

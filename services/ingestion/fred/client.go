@@ -9,6 +9,17 @@ import (
 	"time"
 )
 
+// RetryableError indicates a transient failure (rate limit or server error)
+// that should be retried on the next poll cycle.
+type RetryableError struct {
+	StatusCode int
+	SeriesID   string
+}
+
+func (e *RetryableError) Error() string {
+	return fmt.Sprintf("FRED API returned status %d for series %s (retryable)", e.StatusCode, e.SeriesID)
+}
+
 // Observation represents a single FRED data point.
 type Observation struct {
 	Date  time.Time
@@ -67,6 +78,9 @@ func (c *Client) FetchSeries(ctx context.Context, seriesID string, startDate str
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			return nil, &RetryableError{StatusCode: resp.StatusCode, SeriesID: seriesID}
+		}
 		return nil, fmt.Errorf("FRED API returned status %d for series %s", resp.StatusCode, seriesID)
 	}
 
