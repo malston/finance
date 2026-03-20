@@ -1,0 +1,43 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: risk
+      POSTGRES_PASSWORD: "${TIMESCALEDB_PASSWORD:-riskmonitor}"
+      POSTGRES_DB: riskmonitor
+    volumes:
+      - tsdata:/var/lib/postgresql/data
+      - ./services/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U risk -d riskmonitor"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ingestion:
+    build:
+      context: ./services/ingestion
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgres://risk:${TIMESCALEDB_PASSWORD:-riskmonitor}@timescaledb:5432/riskmonitor"
+      FRED_API_KEY: "${FRED_API_KEY:-}"
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    ports:
+      - "3000:3000"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgres://risk:${TIMESCALEDB_PASSWORD:-riskmonitor}@timescaledb:5432/riskmonitor"
+
+volumes:
+  tsdata:
