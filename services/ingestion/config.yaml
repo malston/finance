@@ -34,3 +34,16 @@ finnhub:
     - NG=F
   poll_interval: 5m
   rate_limit_delay: 1s
+
+health:
+  sources:
+    finnhub:
+      staleness_threshold: 15m
+    fred:
+      staleness_threshold: 24h
+    valyu_filings:
+      staleness_threshold: 24h
+    valyu_sentiment:
+      staleness_threshold: 2h
+    valyu_insider:
+      staleness_threshold: 24h

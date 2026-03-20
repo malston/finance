@@ -12,6 +12,17 @@ import (
 type Config struct {
 	Fred    FredConfig    `yaml:"fred"`
 	Finnhub FinnhubConfig `yaml:"finnhub"`
+	Health  HealthConfig  `yaml:"health"`
+}
+
+// HealthConfig holds per-source staleness thresholds.
+type HealthConfig struct {
+	Sources map[string]SourceHealthConfig `yaml:"sources"`
+}
+
+// SourceHealthConfig holds the staleness threshold for a single source.
+type SourceHealthConfig struct {
+	StalenessThreshold time.Duration `yaml:"staleness_threshold"`
 }
 
 // FredConfig holds FRED API settings and series list.
@@ -60,6 +71,23 @@ func Load(path string) (*Config, error) {
 
 	if len(cfg.Fred.Series) == 0 {
 		return nil, fmt.Errorf("fred.series must contain at least one series ID")
+	}
+
+	// Apply default health staleness thresholds
+	if cfg.Health.Sources == nil {
+		cfg.Health.Sources = make(map[string]SourceHealthConfig)
+	}
+	defaults := map[string]time.Duration{
+		"finnhub":         15 * time.Minute,
+		"fred":            24 * time.Hour,
+		"valyu_filings":   24 * time.Hour,
+		"valyu_sentiment": 2 * time.Hour,
+		"valyu_insider":   24 * time.Hour,
+	}
+	for source, threshold := range defaults {
+		if _, ok := cfg.Health.Sources[source]; !ok {
+			cfg.Health.Sources[source] = SourceHealthConfig{StalenessThreshold: threshold}
+		}
 	}
 
 	return &cfg, nil
