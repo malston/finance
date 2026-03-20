@@ -121,3 +121,107 @@ func (s *Store) LatestValue(ctx context.Context, ticker string) (float64, time.T
 	}
 	return *value, *ts, nil
 }
+
+// NewsSentimentRow represents a row in the news_sentiment table.
+type NewsSentimentRow struct {
+	Time       time.Time
+	Domain     string
+	Headline   string
+	Sentiment  float64
+	SourceName string
+	SourceURL  string
+}
+
+// WriteNewsSentiment inserts news sentiment rows into the news_sentiment table.
+func (s *Store) WriteNewsSentiment(ctx context.Context, rows []NewsSentimentRow) error {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	for _, r := range rows {
+		_, err := tx.Exec(ctx,
+			`INSERT INTO news_sentiment (time, domain, headline, sentiment, source_name, source_url)
+			 VALUES ($1, $2, $3, $4, $5, $6)`,
+			r.Time, r.Domain, r.Headline, r.Sentiment, r.SourceName, r.SourceURL,
+		)
+		if err != nil {
+			return fmt.Errorf("inserting news sentiment: %w", err)
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
+// QueryNewsSentiment returns recent news_sentiment rows for a domain, ordered by time descending.
+func (s *Store) QueryNewsSentiment(ctx context.Context, domain string, limit int) ([]NewsSentimentRow, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	rows, err := s.pool.Query(ctx,
+		`SELECT time, domain, headline, sentiment, source_name, source_url
+		 FROM news_sentiment
+		 WHERE domain = $1
+		 ORDER BY time DESC
+		 LIMIT $2`,
+		domain, limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("querying news sentiment: %w", err)
+	}
+	defer rows.Close()
+
+	var result []NewsSentimentRow
+	for rows.Next() {
+		var r NewsSentimentRow
+		if err := rows.Scan(&r.Time, &r.Domain, &r.Headline, &r.Sentiment, &r.SourceName, &r.SourceURL); err != nil {
+			return nil, fmt.Errorf("scanning news sentiment row: %w", err)
+		}
+		result = append(result, r)
+	}
+
+	return result, rows.Err()
+}
+
+// InsiderTradeRow represents a row in the insider_trades table.
+type InsiderTradeRow struct {
+	Time        time.Time
+	Ticker      string
+	InsiderName string
+	TradeType   string
+	Shares      int
+	Price       float64
+	SourceURL   string
+}
+
+// WriteInsiderTrades inserts insider trade rows into the insider_trades table.
+func (s *Store) WriteInsiderTrades(ctx context.Context, rows []InsiderTradeRow) error {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	for _, r := range rows {
+		_, err := tx.Exec(ctx,
+			`INSERT INTO insider_trades (time, ticker, insider_name, trade_type, shares, price, source_url)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			r.Time, r.Ticker, r.InsiderName, r.TradeType, r.Shares, r.Price, r.SourceURL,
+		)
+		if err != nil {
+			return fmt.Errorf("inserting insider trade: %w", err)
+		}
+	}
+
+	return tx.Commit(ctx)
+}

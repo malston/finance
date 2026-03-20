@@ -7,6 +7,15 @@ export interface TimeSeriesRow {
   source: string;
 }
 
+export interface NewsSentimentRow {
+  time: string;
+  domain: string;
+  headline: string;
+  sentiment: number;
+  source_name: string;
+  source_url: string;
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -61,5 +70,30 @@ export async function queryLatestPrices(
   `;
 
   const result = await pool.query(sql, [tickers]);
+  return result.rows;
+}
+
+/**
+ * Queries recent news sentiment headlines for a given domain.
+ */
+export async function queryNewsSentiment(
+  domain: string,
+  limit: number = 10,
+): Promise<NewsSentimentRow[]> {
+  if (!domain) {
+    throw new Error("domain is required");
+  }
+
+  const effectiveLimit = Math.max(Math.min(limit, 100), 1);
+
+  const sql = `
+    SELECT time, domain, headline, sentiment, source_name, source_url
+    FROM news_sentiment
+    WHERE domain = $1
+    ORDER BY time DESC
+    LIMIT $2
+  `;
+
+  const result = await pool.query(sql, [domain, effectiveLimit]);
   return result.rows;
 }
