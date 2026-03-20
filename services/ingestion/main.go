@@ -81,19 +81,10 @@ func main() {
 		"interval", cfg.Fred.PollInterval,
 	)
 
-	// fetchAndTrackHealth runs a FRED fetch cycle and records the result in source_health.
-	fetchAndTrackHealth := func() {
-		fetchErr := scheduler.FetchOnce(ctx, fredClient, tsStore, cfg.Fred.Series, lookbackDays)
-		if fetchErr != nil {
-			slog.Warn("fetch failed", "error", fetchErr)
-		}
-		if healthErr := tsStore.UpdateSourceHealth(ctx, "fred", fetchErr); healthErr != nil {
-			slog.Error("updating source health", "error", healthErr)
-		}
-	}
-
 	// Fetch immediately on startup
-	fetchAndTrackHealth()
+	if err := scheduler.FetchOnce(ctx, fredClient, tsStore, cfg.Fred.Series, lookbackDays); err != nil {
+		slog.Warn("initial fetch failed", "error", err)
+	}
 
 	// Then fetch on configured interval
 	ticker := time.NewTicker(cfg.Fred.PollInterval)
@@ -105,7 +96,9 @@ func main() {
 			slog.Info("ingestion service stopped")
 			return
 		case <-ticker.C:
-			fetchAndTrackHealth()
+			if err := scheduler.FetchOnce(ctx, fredClient, tsStore, cfg.Fred.Series, lookbackDays); err != nil {
+				slog.Warn("periodic fetch failed", "error", err)
+			}
 		}
 	}
 }
