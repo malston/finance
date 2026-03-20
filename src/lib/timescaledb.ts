@@ -43,3 +43,23 @@ export async function queryTimeSeries(
   const result = await pool.query(sql, [ticker, effectiveDays]);
   return result.rows;
 }
+
+/**
+ * Returns the latest price for each of the given tickers.
+ * One row per ticker with the most recent time, value, and source.
+ */
+export async function queryLatestPrices(
+  tickers: string[],
+): Promise<TimeSeriesRow[]> {
+  if (tickers.length === 0) return [];
+
+  const sql = `
+    SELECT DISTINCT ON (ticker) time, ticker, value, source
+    FROM time_series
+    WHERE ticker = ANY($1)
+    ORDER BY ticker, time DESC
+  `;
+
+  const result = await pool.query(sql, [tickers]);
+  return result.rows;
+}
