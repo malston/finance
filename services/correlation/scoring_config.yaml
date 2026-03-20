@@ -1,0 +1,23 @@
+scoring:
+  private_credit:
+    weight: 0.30
+    components:
+      hy_spread:
+        sub_weight: 0.35
+        ticker: BAMLH0A0HYM2
+        min_value: 300
+        max_value: 600
+      bdc_discount:
+        sub_weight: 0.25
+        ticker: BDC_AVG_NAV_DISCOUNT
+        min_value: 0
+        max_value: -0.20
+      redemption_flow:
+        sub_weight: 0.15
+        placeholder: 50
+      spread_roc:
+        sub_weight: 0.25
+        ticker: BAMLH0A0HYM2
+        min_value: 0
+        max_value: 50
+        lookback_days: 5
