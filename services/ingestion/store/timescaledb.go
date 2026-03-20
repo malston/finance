@@ -104,3 +104,20 @@ func (s *Store) LatestTimestamp(ctx context.Context, ticker string) (time.Time, 
 	}
 	return *latest, nil
 }
+
+// LatestValue returns the most recent value and timestamp for the given ticker.
+// Returns (0, zero time, nil) if no data exists for that ticker.
+func (s *Store) LatestValue(ctx context.Context, ticker string) (float64, time.Time, error) {
+	var value *float64
+	var ts *time.Time
+	err := s.pool.QueryRow(ctx,
+		`SELECT value, time FROM time_series WHERE ticker = $1 ORDER BY time DESC LIMIT 1`, ticker,
+	).Scan(&value, &ts)
+	if err != nil {
+		return 0, time.Time{}, fmt.Errorf("querying latest value for %s: %w", ticker, err)
+	}
+	if value == nil || ts == nil {
+		return 0, time.Time{}, nil
+	}
+	return *value, *ts, nil
+}

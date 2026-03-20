@@ -10,7 +10,8 @@ import (
 
 // Config holds all ingestion service configuration.
 type Config struct {
-	Fred FredConfig `yaml:"fred"`
+	Fred    FredConfig    `yaml:"fred"`
+	Finnhub FinnhubConfig `yaml:"finnhub"`
 }
 
 // FredConfig holds FRED API settings and series list.
@@ -18,6 +19,15 @@ type FredConfig struct {
 	APIKey       string        `yaml:"api_key"`
 	Series       []string      `yaml:"series"`
 	PollInterval time.Duration `yaml:"poll_interval"`
+}
+
+// FinnhubConfig holds Finnhub API settings and ticker lists.
+type FinnhubConfig struct {
+	APIKey           string        `yaml:"api_key"`
+	RESTTickers      []string      `yaml:"rest_tickers"`
+	WebSocketTickers []string      `yaml:"websocket_tickers"`
+	PollInterval     time.Duration `yaml:"poll_interval"`
+	RateLimitDelay   time.Duration `yaml:"rate_limit_delay"`
 }
 
 // Load reads a config file from disk, expands environment variables in the
@@ -33,12 +43,19 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("parsing config file: %w", err)
 	}
 
-	// Expand env vars in the API key (e.g., ${FRED_API_KEY})
+	// Expand env vars in API keys
 	cfg.Fred.APIKey = os.ExpandEnv(cfg.Fred.APIKey)
+	cfg.Finnhub.APIKey = os.ExpandEnv(cfg.Finnhub.APIKey)
 
-	// Default poll interval to 24h
+	// Default poll intervals
 	if cfg.Fred.PollInterval == 0 {
 		cfg.Fred.PollInterval = 24 * time.Hour
+	}
+	if cfg.Finnhub.PollInterval == 0 {
+		cfg.Finnhub.PollInterval = 5 * time.Minute
+	}
+	if cfg.Finnhub.RateLimitDelay == 0 {
+		cfg.Finnhub.RateLimitDelay = 1 * time.Second
 	}
 
 	if len(cfg.Fred.Series) == 0 {

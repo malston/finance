@@ -121,3 +121,84 @@ func TestLoadConfig_MissingFileReturnsError(t *testing.T) {
 		t.Fatal("expected error for missing file, got nil")
 	}
 }
+
+func TestLoadConfig_ParsesFinnhubConfig(t *testing.T) {
+	t.Setenv("FINNHUB_API_KEY", "fh-key-xyz")
+
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	err := os.WriteFile(cfgPath, []byte(`
+fred:
+  api_key: test
+  series:
+    - DGS10
+finnhub:
+  api_key: ${FINNHUB_API_KEY}
+  rest_tickers:
+    - NVDA
+    - MSFT
+    - SPY
+  websocket_tickers:
+    - VIX
+    - CL=F
+  poll_interval: 5m
+  rate_limit_delay: 1s
+`), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Finnhub.APIKey != "fh-key-xyz" {
+		t.Errorf("Finnhub.APIKey = %q, want %q", cfg.Finnhub.APIKey, "fh-key-xyz")
+	}
+	if len(cfg.Finnhub.RESTTickers) != 3 {
+		t.Fatalf("Finnhub.RESTTickers count = %d, want 3", len(cfg.Finnhub.RESTTickers))
+	}
+	if cfg.Finnhub.RESTTickers[0] != "NVDA" {
+		t.Errorf("Finnhub.RESTTickers[0] = %q, want %q", cfg.Finnhub.RESTTickers[0], "NVDA")
+	}
+	if len(cfg.Finnhub.WebSocketTickers) != 2 {
+		t.Fatalf("Finnhub.WebSocketTickers count = %d, want 2", len(cfg.Finnhub.WebSocketTickers))
+	}
+	if cfg.Finnhub.PollInterval != 5*time.Minute {
+		t.Errorf("Finnhub.PollInterval = %v, want 5m", cfg.Finnhub.PollInterval)
+	}
+	if cfg.Finnhub.RateLimitDelay != 1*time.Second {
+		t.Errorf("Finnhub.RateLimitDelay = %v, want 1s", cfg.Finnhub.RateLimitDelay)
+	}
+}
+
+func TestLoadConfig_FinnhubDefaultPollInterval(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	err := os.WriteFile(cfgPath, []byte(`
+fred:
+  api_key: ""
+  series:
+    - DGS10
+finnhub:
+  api_key: test
+  rest_tickers:
+    - NVDA
+`), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Finnhub.PollInterval != 5*time.Minute {
+		t.Errorf("Finnhub.PollInterval = %v, want 5m (default)", cfg.Finnhub.PollInterval)
+	}
+	if cfg.Finnhub.RateLimitDelay != 1*time.Second {
+		t.Errorf("Finnhub.RateLimitDelay = %v, want 1s (default)", cfg.Finnhub.RateLimitDelay)
+	}
+}

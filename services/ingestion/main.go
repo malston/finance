@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/computed"
 	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/config"
+	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/finnhub"
 	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/fred"
 	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/scheduler"
 	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
@@ -47,6 +49,11 @@ func main() {
 		fredBaseURL = "https://api.stlouisfed.org"
 	}
 
+	finnhubBaseURL := os.Getenv("FINNHUB_BASE_URL")
+	if finnhubBaseURL == "" {
+		finnhubBaseURL = "https://finnhub.io"
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -74,32 +81,105 @@ func main() {
 		BaseURL: fredBaseURL,
 		APIKey:  cfg.Fred.APIKey,
 	})
+
+	finnhubClient := finnhub.NewClient(finnhub.Config{
+		BaseURL: finnhubBaseURL,
+		APIKey:  cfg.Finnhub.APIKey,
+	})
+
 	tsStore := store.New(pool)
 
 	slog.Info("ingestion service started",
-		"series", cfg.Fred.Series,
-		"interval", cfg.Fred.PollInterval,
+		"fred_series", cfg.Fred.Series,
+		"fred_interval", cfg.Fred.PollInterval,
+		"finnhub_rest_tickers", cfg.Finnhub.RESTTickers,
+		"finnhub_ws_tickers", cfg.Finnhub.WebSocketTickers,
+		"finnhub_interval", cfg.Finnhub.PollInterval,
 	)
 
-	// Fetch immediately on startup
-	if err := scheduler.FetchOnce(ctx, fredClient, tsStore, cfg.Fred.Series, lookbackDays); err != nil {
-		slog.Warn("initial fetch failed", "error", err)
+	// Start Finnhub WebSocket for streaming tickers
+	if len(cfg.Finnhub.WebSocketTickers) > 0 && cfg.Finnhub.APIKey != "" {
+		wsSink := make(chan store.TimeSeriesPoint, 100)
+		wsURL := "wss://ws.finnhub.io"
+
+		go func() {
+			if err := finnhub.StartWebSocket(ctx, wsURL, cfg.Finnhub.APIKey, cfg.Finnhub.WebSocketTickers, wsSink); err != nil {
+				slog.Error("WebSocket stopped", "error", err)
+			}
+		}()
+
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case point := <-wsSink:
+					if err := tsStore.WritePoints(ctx, []store.TimeSeriesPoint{point}); err != nil {
+						slog.Error("writing WebSocket point", "error", err, "ticker", point.Ticker)
+					}
+				}
+			}
+		}()
 	}
 
-	// Then fetch on configured interval
-	ticker := time.NewTicker(cfg.Fred.PollInterval)
-	defer ticker.Stop()
+	// Fetch FRED immediately on startup
+	if err := scheduler.FetchOnce(ctx, fredClient, tsStore, cfg.Fred.Series, lookbackDays); err != nil {
+		slog.Warn("initial FRED fetch failed", "error", err)
+	}
+
+	// Fetch Finnhub immediately on startup
+	if len(cfg.Finnhub.RESTTickers) > 0 && cfg.Finnhub.APIKey != "" {
+		fetchFinnhub(ctx, finnhubClient, tsStore, cfg)
+	}
+
+	fredTicker := time.NewTicker(cfg.Fred.PollInterval)
+	defer fredTicker.Stop()
+
+	finnhubTicker := time.NewTicker(cfg.Finnhub.PollInterval)
+	defer finnhubTicker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			slog.Info("ingestion service stopped")
 			return
-		case <-ticker.C:
+		case <-fredTicker.C:
 			if err := scheduler.FetchOnce(ctx, fredClient, tsStore, cfg.Fred.Series, lookbackDays); err != nil {
-				slog.Warn("periodic fetch failed", "error", err)
+				slog.Warn("periodic FRED fetch failed", "error", err)
+			}
+		case <-finnhubTicker.C:
+			if len(cfg.Finnhub.RESTTickers) > 0 && cfg.Finnhub.APIKey != "" {
+				fetchFinnhub(ctx, finnhubClient, tsStore, cfg)
 			}
 		}
+	}
+}
+
+func fetchFinnhub(ctx context.Context, client *finnhub.Client, tsStore *store.Store, cfg *config.Config) {
+	points, err := client.FetchQuotes(ctx, cfg.Finnhub.RESTTickers, cfg.Finnhub.RateLimitDelay)
+	if err != nil {
+		slog.Warn("Finnhub fetch failed", "error", err)
+		return
+	}
+
+	if len(points) > 0 {
+		if err := tsStore.WritePoints(ctx, points); err != nil {
+			slog.Error("writing Finnhub points", "error", err)
+		} else {
+			slog.Info("wrote Finnhub quotes", "count", len(points))
+		}
+	}
+
+	// Compute SPY/RSP ratio if both tickers were fetched
+	ratioPoint, err := computed.ComputeRatio(ctx, tsStore, "SPY", "RSP")
+	if err != nil {
+		slog.Warn("computing SPY/RSP ratio", "error", err)
+		return
+	}
+	if err := tsStore.WritePoints(ctx, []store.TimeSeriesPoint{*ratioPoint}); err != nil {
+		slog.Error("writing SPY_RSP_RATIO", "error", err)
+	} else {
+		slog.Info("wrote SPY_RSP_RATIO", "value", ratioPoint.Value)
 	}
 }
 
