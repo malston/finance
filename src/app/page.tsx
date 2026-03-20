@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { C } from "@/lib/theme";
+import { HYCreditSpreadCard } from "@/components/hy-credit-card";
 
 function HeaderClock() {
   const [time, setTime] = useState(new Date());
@@ -167,7 +168,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Sector Panels placeholder */}
+        {/* Sector Panels */}
         <div
           data-testid="section-sector-panels"
           style={{
@@ -176,8 +177,8 @@ export default function DashboardPage() {
             gap: 16,
           }}
         >
+          <HYCreditSpreadCard />
           {[
-            "Private Credit Stress",
             "AI / Tech Concentration",
             "Energy & Geopolitical",
             "Cross-Domain Contagion",
