@@ -1,0 +1,8 @@
+fred:
+  api_key: ${FRED_API_KEY}
+  series:
+    - BAMLH0A0HYM2
+    - DGS10
+    - DGS2
+    - T10Y2Y
+  poll_interval: 24h

@@ -10,14 +10,13 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/config"
 	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/fred"
+	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/scheduler"
 	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
 )
 
 const (
-	seriesID      = "BAMLH0A0HYM2"
-	source        = "fred"
-	fetchInterval = 1 * time.Hour
 	// Fetch 6 months of history on first run
 	lookbackDays = 180
 )
@@ -25,6 +24,17 @@ const (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
+
+	cfgPath := os.Getenv("CONFIG_PATH")
+	if cfgPath == "" {
+		cfgPath = "config.yaml"
+	}
+
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		slog.Error("loading config", "error", err)
+		os.Exit(1)
+	}
 
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -37,12 +47,9 @@ func main() {
 		fredBaseURL = "https://api.stlouisfed.org"
 	}
 
-	fredAPIKey := os.Getenv("FRED_API_KEY")
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Handle graceful shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -58,7 +65,6 @@ func main() {
 	}
 	defer pool.Close()
 
-	// Wait for database to be ready
 	if err := waitForDB(ctx, pool); err != nil {
 		slog.Error("database not ready", "error", err)
 		os.Exit(1)
@@ -66,19 +72,22 @@ func main() {
 
 	fredClient := fred.NewClient(fred.Config{
 		BaseURL: fredBaseURL,
-		APIKey:  fredAPIKey,
+		APIKey:  cfg.Fred.APIKey,
 	})
 	tsStore := store.New(pool)
 
-	slog.Info("ingestion service started", "series", seriesID, "interval", fetchInterval)
+	slog.Info("ingestion service started",
+		"series", cfg.Fred.Series,
+		"interval", cfg.Fred.PollInterval,
+	)
 
 	// Fetch immediately on startup
-	if err := fetchAndStore(ctx, fredClient, tsStore); err != nil {
+	if err := scheduler.FetchOnce(ctx, fredClient, tsStore, cfg.Fred.Series, lookbackDays); err != nil {
 		slog.Warn("initial fetch failed", "error", err)
 	}
 
-	// Then fetch on interval
-	ticker := time.NewTicker(fetchInterval)
+	// Then fetch on configured interval
+	ticker := time.NewTicker(cfg.Fred.PollInterval)
 	defer ticker.Stop()
 
 	for {
@@ -87,44 +96,11 @@ func main() {
 			slog.Info("ingestion service stopped")
 			return
 		case <-ticker.C:
-			if err := fetchAndStore(ctx, fredClient, tsStore); err != nil {
+			if err := scheduler.FetchOnce(ctx, fredClient, tsStore, cfg.Fred.Series, lookbackDays); err != nil {
 				slog.Warn("periodic fetch failed", "error", err)
 			}
 		}
 	}
-}
-
-func fetchAndStore(ctx context.Context, fredClient *fred.Client, tsStore *store.Store) error {
-	startDate := time.Now().AddDate(0, 0, -lookbackDays).Format("2006-01-02")
-
-	slog.Info("fetching FRED series", "series", seriesID, "start_date", startDate)
-
-	observations, err := fredClient.FetchSeries(ctx, seriesID, startDate)
-	if err != nil {
-		return fmt.Errorf("fetching FRED series: %w", err)
-	}
-
-	if len(observations) == 0 {
-		slog.Info("no observations returned from FRED")
-		return nil
-	}
-
-	points := make([]store.TimeSeriesPoint, len(observations))
-	for i, obs := range observations {
-		points[i] = store.TimeSeriesPoint{
-			Time:   obs.Date,
-			Ticker: seriesID,
-			Value:  obs.Value,
-			Source: source,
-		}
-	}
-
-	if err := tsStore.WritePoints(ctx, points); err != nil {
-		return fmt.Errorf("writing points to TimescaleDB: %w", err)
-	}
-
-	slog.Info("wrote observations to TimescaleDB", "count", len(points))
-	return nil
 }
 
 func waitForDB(ctx context.Context, pool *pgxpool.Pool) error {
