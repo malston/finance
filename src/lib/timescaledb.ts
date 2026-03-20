@@ -44,6 +44,24 @@ export async function queryTimeSeries(
   return result.rows;
 }
 
+export interface SourceHealthRow {
+  source: string;
+  last_success: string;
+  last_error: string | null;
+  last_error_msg: string | null;
+  consecutive_failures: number;
+}
+
+/**
+ * Returns health status for all tracked data sources.
+ */
+export async function querySourceHealth(): Promise<SourceHealthRow[]> {
+  const result = await pool.query(
+    "SELECT source, last_success, last_error, last_error_msg, consecutive_failures FROM source_health ORDER BY source",
+  );
+  return result.rows;
+}
+
 /**
  * Returns the latest price for each of the given tickers.
  * One row per ticker with the most recent time, value, and source.
