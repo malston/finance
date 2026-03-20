@@ -61,4 +61,9 @@ describe("Dashboard page", () => {
     render(<DashboardPage />);
     expect(screen.getByText(/SIMULATED DATA/)).toBeInTheDocument();
   });
+
+  it("renders the Treasury & Credit Spreads card", () => {
+    render(<DashboardPage />);
+    expect(screen.getByTestId("treasury-credit-card")).toBeInTheDocument();
+  });
 });

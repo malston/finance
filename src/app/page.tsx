@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { C } from "@/lib/theme";
 import { HYCreditSpreadCard } from "@/components/hy-credit-card";
+import { TreasuryCreditCard } from "@/components/treasury-credit-card";
 
 function HeaderClock() {
   const [time, setTime] = useState(new Date());
@@ -178,6 +179,7 @@ export default function DashboardPage() {
           }}
         >
           <HYCreditSpreadCard />
+          <TreasuryCreditCard />
           {[
             "AI / Tech Concentration",
             "Energy & Geopolitical",
