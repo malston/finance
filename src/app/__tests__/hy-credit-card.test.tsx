@@ -105,7 +105,7 @@ describe("HYCreditSpreadCard", () => {
     });
   });
 
-  it("shows stale data badge when fetch fails", async () => {
+  it("shows stale data badge with timestamp when fetch fails", async () => {
     mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
     render(<HYCreditSpreadCard />);
@@ -113,9 +113,14 @@ describe("HYCreditSpreadCard", () => {
     await waitFor(() => {
       expect(screen.getByTestId("stale-data-badge")).toBeInTheDocument();
     });
+
+    const timestamp = screen.getByTestId("stale-timestamp");
+    expect(timestamp).toBeInTheDocument();
+    // Timestamp should contain "Last updated" and a time pattern like "2:15 PM"
+    expect(timestamp.textContent).toMatch(/Last updated \d{1,2}:\d{2}\s[AP]M/);
   });
 
-  it("shows stale data badge when API returns error", async () => {
+  it("shows stale data badge with timestamp when API returns error", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 500,
@@ -127,6 +132,10 @@ describe("HYCreditSpreadCard", () => {
     await waitFor(() => {
       expect(screen.getByTestId("stale-data-badge")).toBeInTheDocument();
     });
+
+    const timestamp = screen.getByTestId("stale-timestamp");
+    expect(timestamp).toBeInTheDocument();
+    expect(timestamp.textContent).toMatch(/Last updated \d{1,2}:\d{2}\s[AP]M/);
   });
 
   it("fetches data from the correct API endpoint", async () => {

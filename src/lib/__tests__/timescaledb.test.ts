@@ -11,7 +11,40 @@ vi.mock("pg", () => ({
   },
 }));
 
-import { queryTimeSeries, type TimeSeriesRow } from "@/lib/timescaledb";
+import { query, queryTimeSeries, type TimeSeriesRow } from "@/lib/timescaledb";
+
+describe("query", () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+  });
+
+  it("executes SQL with params and returns rows", async () => {
+    const fakeRows = [{ id: 1, name: "test" }];
+    mockQuery.mockResolvedValueOnce({ rows: fakeRows });
+
+    const result = await query("SELECT * FROM things WHERE id = $1", [1]);
+
+    expect(result).toEqual(fakeRows);
+    expect(mockQuery).toHaveBeenCalledWith(
+      "SELECT * FROM things WHERE id = $1",
+      [1],
+    );
+  });
+
+  it("returns empty array when no rows match", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const result = await query("SELECT * FROM things WHERE id = $1", [999]);
+
+    expect(result).toEqual([]);
+  });
+
+  it("propagates database errors", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("connection refused"));
+
+    await expect(query("SELECT 1", [])).rejects.toThrow("connection refused");
+  });
+});
 
 describe("queryTimeSeries", () => {
   beforeEach(() => {

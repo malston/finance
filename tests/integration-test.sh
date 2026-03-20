@@ -139,5 +139,48 @@ if [ "${INDEX_CHECK}" != "1" ]; then
 fi
 echo "PASS: Index exists"
 
+# Start the app service for API route testing
+echo "--- Starting app service ---"
+docker compose -f "${PROJECT_DIR}/docker-compose.yml" up -d app
+
+echo "--- Waiting for app service to be ready ---"
+for i in $(seq 1 60); do
+    if curl -sf http://localhost:3000 >/dev/null 2>&1; then
+        echo "App service is ready (attempt ${i})"
+        break
+    fi
+    if [ "$i" -eq 60 ]; then
+        echo "FAIL: App service did not become ready in 60 seconds" >&2
+        exit 1
+    fi
+    sleep 1
+done
+
+# Query the API route and verify the response shape
+echo "--- Verifying /api/risk/timeseries API route ---"
+API_RESPONSE=$(curl -sf "http://localhost:3000/api/risk/timeseries?ticker=BAMLH0A0HYM2&days=79")
+
+if [ -z "${API_RESPONSE}" ]; then
+    echo "FAIL: API returned empty response" >&2
+    exit 1
+fi
+
+# Verify it is a non-empty JSON array
+ARRAY_LENGTH=$(echo "${API_RESPONSE}" | jq 'length')
+if [ "${ARRAY_LENGTH}" -lt 1 ]; then
+    echo "FAIL: Expected non-empty array, got length ${ARRAY_LENGTH}" >&2
+    exit 1
+fi
+echo "PASS: API returned ${ARRAY_LENGTH} rows"
+
+# Verify each row has the required fields: time, ticker, value, source
+SHAPE_CHECK=$(echo "${API_RESPONSE}" | jq '.[0] | has("time", "ticker", "value", "source")')
+if [ "${SHAPE_CHECK}" != "true" ]; then
+    echo "FAIL: Response rows missing required fields (time, ticker, value, source)" >&2
+    echo "First row: $(echo "${API_RESPONSE}" | jq '.[0]')" >&2
+    exit 1
+fi
+echo "PASS: API response has correct shape {time, ticker, value, source}"
+
 echo ""
 echo "=== All integration tests passed ==="

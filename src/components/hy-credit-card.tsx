@@ -33,14 +33,26 @@ export function HYCreditSpreadCard() {
           "/api/risk/timeseries?ticker=BAMLH0A0HYM2&days=79",
         );
         if (!response.ok) {
-          setState({ status: "error" });
+          setState({
+            status: "error",
+            lastUpdated: new Date().toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+            }),
+          });
           return;
         }
         const data: TimeSeriesRow[] = await response.json();
         const latestValue = data.length > 0 ? data[data.length - 1].value : 0;
         setState({ status: "loaded", data, latestValue });
       } catch {
-        setState({ status: "error" });
+        setState({
+          status: "error",
+          lastUpdated: new Date().toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+          }),
+        });
       }
     }
 
@@ -97,6 +109,12 @@ export function HYCreditSpreadCard() {
             }}
           >
             Data stale
+            {state.lastUpdated && (
+              <span data-testid="stale-timestamp">
+                {" "}
+                · Last updated {state.lastUpdated}
+              </span>
+            )}
           </div>
         </div>
       )}

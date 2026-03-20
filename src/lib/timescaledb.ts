@@ -12,6 +12,14 @@ const pool = new Pool({
 });
 
 /**
+ * Executes an arbitrary SQL query and returns the resulting rows.
+ */
+export async function query(sql: string, params: any[]): Promise<any[]> {
+  const result = await pool.query(sql, params);
+  return result.rows;
+}
+
+/**
  * Queries time series data for a given ticker, returning the most recent N trading days.
  */
 export async function queryTimeSeries(
