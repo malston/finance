@@ -11,7 +11,13 @@ vi.mock("pg", () => ({
   },
 }));
 
-import { query, queryTimeSeries, type TimeSeriesRow } from "@/lib/timescaledb";
+import {
+  query,
+  queryTimeSeries,
+  querySourceHealth,
+  type TimeSeriesRow,
+  type SourceHealthRow,
+} from "@/lib/timescaledb";
 
 describe("query", () => {
   beforeEach(() => {
@@ -123,5 +129,61 @@ describe("queryTimeSeries", () => {
     const result = await queryTimeSeries("NONEXISTENT", 30);
 
     expect(result).toEqual([]);
+  });
+});
+
+describe("querySourceHealth", () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+  });
+
+  it("returns health rows for all sources", async () => {
+    const fakeRows: SourceHealthRow[] = [
+      {
+        source: "finnhub",
+        last_success: "2026-03-20T10:00:00Z",
+        last_error: null,
+        last_error_msg: null,
+        consecutive_failures: 0,
+      },
+      {
+        source: "fred",
+        last_success: "2026-03-20T06:00:00Z",
+        last_error: null,
+        last_error_msg: null,
+        consecutive_failures: 0,
+      },
+    ];
+    mockQuery.mockResolvedValueOnce({ rows: fakeRows });
+
+    const result = await querySourceHealth();
+
+    expect(result).toEqual(fakeRows);
+    expect(result).toHaveLength(2);
+  });
+
+  it("queries the source_health table ordered by source", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    await querySourceHealth();
+
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql] = mockQuery.mock.calls[0];
+    expect(sql).toContain("source_health");
+    expect(sql).toMatch(/ORDER BY.*source/i);
+  });
+
+  it("returns empty array when no sources tracked", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const result = await querySourceHealth();
+
+    expect(result).toEqual([]);
+  });
+
+  it("propagates database errors", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("connection refused"));
+
+    await expect(querySourceHealth()).rejects.toThrow("connection refused");
   });
 });
