@@ -8,6 +8,7 @@ import { EquityEtfCard } from "@/components/equity-etf-card";
 import { SectorPanels } from "@/components/risk/sector-panels";
 import { NewsSentimentSidebar } from "@/components/news-sentiment-sidebar";
 import { CorrelationChart } from "@/components/risk/correlation-chart";
+import { ThreatLegend } from "@/components/risk/threat-legend";
 
 function HeaderClock() {
   const [time, setTime] = useState(new Date());
@@ -177,45 +178,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Legend */}
-          <div
-            style={{
-              display: "flex",
-              gap: 20,
-              justifyContent: "center",
-              padding: "8px 0",
-              flexWrap: "wrap",
-            }}
-          >
-            {[
-              { color: C.green, label: "LOW (0–25)" },
-              { color: C.yellow, label: "ELEVATED (26–50)" },
-              { color: C.orange, label: "HIGH (51–75)" },
-              { color: C.red, label: "CRITICAL (76–100)" },
-            ].map((l) => (
-              <div
-                key={l.label}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  fontSize: 10,
-                  color: C.textDim,
-                  fontFamily: "var(--font-mono)",
-                }}
-              >
-                <div
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: l.color,
-                    boxShadow: `0 0 4px ${l.color}60`,
-                  }}
-                />
-                {l.label}
-              </div>
-            ))}
-          </div>
+          <ThreatLegend />
         </div>
 
         {/* News Sentiment Sidebar (desktop) */}

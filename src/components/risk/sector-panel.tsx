@@ -17,6 +17,7 @@ import { useSourceHealth } from "@/hooks/use-source-health";
 import { useFreshness } from "@/hooks/use-freshness";
 import { ThreatGauge } from "./threat-gauge";
 import { TickerRow } from "./ticker-row";
+import { annotateText } from "./jargon-tooltip";
 
 interface ScoresResponse {
   composite: {
@@ -159,7 +160,7 @@ export function SectorPanel({
                 marginTop: 1,
               }}
             >
-              {domain.description}
+              {annotateText(domain.description)}
             </div>
           </div>
         </div>
