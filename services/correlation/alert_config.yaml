@@ -1,3 +1,15 @@
+channels:
+  email:
+    enabled: true
+    recipients: ["alerts@example.com"]
+    from_address: "noreply@example.com"
+    api_key: "${SENDGRID_API_KEY}"
+  slack:
+    enabled: true
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+  browser_push:
+    enabled: false
+
 alerts:
   rules:
     - id: composite_critical
