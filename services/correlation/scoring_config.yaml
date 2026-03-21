@@ -75,17 +75,12 @@ scoring:
         min_value: 0.1
         max_value: 0.7
       vix_level:
-        sub_weight: 0.25
-        ticker: VIX
+        sub_weight: 0.35
+        ticker: VIXY
         min_value: 15
-        max_value: 40
-      move_level:
-        sub_weight: 0.20
-        ticker: MOVE
-        min_value: 80
-        max_value: 160
+        max_value: 50
       vix_move_comovement:
-        sub_weight: 0.15
+        sub_weight: 0.25
 
   composite:
     domains:

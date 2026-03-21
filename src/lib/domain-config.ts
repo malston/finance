@@ -63,15 +63,13 @@ export const DOMAINS: DomainConfig[] = [
   },
   {
     name: "Cross-Domain Contagion",
-    description: "Rolling correlations across sectors, VIX, MOVE",
+    description: "Rolling correlations across sectors, VIX",
     icon: "link",
     color: "#ef4444",
     scoreKey: "contagion",
     tickers: [
       { symbol: "CORR", label: "Max Pairwise Correlation" },
-      { symbol: "VIX", label: "VIX" },
-      { symbol: "MOVE", label: "MOVE" },
-      { symbol: "SKEW", label: "SKEW" },
+      { symbol: "VIXY", label: "VIX (VIXY)" },
     ],
   },
 ];

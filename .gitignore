@@ -46,8 +46,6 @@ AGENTS.MD
 .claude/
 IMPLEMENTATION_SPEC.md
 
-docs/
-
 # local development database
 .local-data/
 

@@ -52,9 +52,9 @@ describe("DOMAINS configuration", () => {
     expect(tickers).toEqual(["CL=F", "NG=F", "XLU", "EWT"]);
   });
 
-  it("Cross-Domain Contagion has 4 tickers: CORR, VIX, MOVE, SKEW", () => {
+  it("Cross-Domain Contagion has 2 tickers: CORR, VIXY", () => {
     const tickers = DOMAINS[3].tickers.map((t) => t.symbol);
-    expect(tickers).toEqual(["CORR", "VIX", "MOVE", "SKEW"]);
+    expect(tickers).toEqual(["CORR", "VIXY"]);
   });
 
   it("each domain has a color string", () => {

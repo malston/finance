@@ -24,9 +24,7 @@ describe("SOURCE_TICKER_MAP", () => {
     expect(finnhubTickers).toContain("HYG");
     expect(finnhubTickers).toContain("XLU");
     expect(finnhubTickers).toContain("EWT");
-    expect(finnhubTickers).toContain("VIX");
-    expect(finnhubTickers).toContain("MOVE");
-    expect(finnhubTickers).toContain("SKEW");
+    expect(finnhubTickers).toContain("VIXY");
     expect(finnhubTickers).toContain("CL=F");
     expect(finnhubTickers).toContain("NG=F");
   });

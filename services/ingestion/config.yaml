@@ -25,11 +25,8 @@ finnhub:
     - SMH
     - XLU
     - EWT
-    - VIX
-    - MOVE
-    - SKEW
+    - VIXY
   websocket_tickers:
-    - VIX
     - CL=F
     - NG=F
   poll_interval: 5m

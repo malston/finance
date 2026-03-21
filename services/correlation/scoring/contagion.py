@@ -166,9 +166,11 @@ def score_contagion(db_url: str, config: dict[str, Any]) -> float:
 
         max_corr = select_max_pairwise_correlation(corr_values)
 
-        # Fetch VIX and MOVE
-        vix_value = fetch_latest_value(conn, "VIX")
-        move_value = fetch_latest_value(conn, "MOVE")
+        # Fetch VIX (via VIXY ETF proxy) and MOVE
+        ct_config = config.get("scoring", {}).get("contagion", {})
+        vix_ticker = ct_config.get("components", {}).get("vix_level", {}).get("ticker", "VIXY")
+        vix_value = fetch_latest_value(conn, vix_ticker)
+        move_value = None  # MOVE index not available on free data sources
 
         score = score_contagion_from_values(max_corr, vix_value, move_value, config)
 
