@@ -18,3 +18,32 @@ scoring:
         max_value: 160
       vix_move_comovement:
         sub_weight: 0.15
+
+  composite:
+    domains:
+      private_credit:
+        ticker: SCORE_PRIVATE_CREDIT
+        weight: 0.30
+      ai_concentration:
+        ticker: SCORE_AI_CONCENTRATION
+        weight: 0.20
+      energy_geo:
+        ticker: SCORE_ENERGY_GEO
+        weight: 0.25
+      contagion:
+        ticker: SCORE_CONTAGION
+        weight: 0.25
+
+    threat_levels:
+      - max_score: 25
+        level: LOW
+        color: "#22c55e"
+      - max_score: 50
+        level: ELEVATED
+        color: "#eab308"
+      - max_score: 75
+        level: HIGH
+        color: "#f97316"
+      - max_score: 100
+        level: CRITICAL
+        color: "#ef4444"

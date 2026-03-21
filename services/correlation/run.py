@@ -10,6 +10,7 @@ import time
 
 from correlator import compute_correlations
 from index_builder import compute_domain_indices
+from scoring.composite import score_composite
 from scoring.contagion import score_contagion, load_scoring_config
 
 logging.basicConfig(
@@ -45,6 +46,12 @@ def main() -> None:
             logger.info("Contagion score: %.2f", contagion_score)
         except Exception:
             logger.exception("Contagion scoring failed")
+
+        try:
+            composite_score = score_composite(db_url, scoring_config)
+            logger.info("Composite score: %.2f", composite_score)
+        except Exception:
+            logger.exception("Composite scoring failed")
 
         time.sleep(interval)
 
