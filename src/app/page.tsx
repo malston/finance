@@ -5,6 +5,7 @@ import { C } from "@/lib/theme";
 import { HYCreditSpreadCard } from "@/components/hy-credit-card";
 import { TreasuryCreditCard } from "@/components/treasury-credit-card";
 import { EquityEtfCard } from "@/components/equity-etf-card";
+import { CorrelationChart } from "@/components/risk/correlation-chart";
 
 function HeaderClock() {
   const [time, setTime] = useState(new Date());
@@ -150,24 +151,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Correlation Chart placeholder */}
-        <div
-          data-testid="section-correlation-chart"
-          style={{
-            background: C.panel,
-            border: `1px solid ${C.panelBorder}`,
-            borderRadius: 8,
-            padding: "16px 16px 8px 8px",
-            minHeight: 200,
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
-            Cross-Domain Correlation Monitor
-          </div>
-          <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>
-            BDC ↔ Big Tech 30-day rolling correlation — above 0.5 signals
-            contagion
-          </div>
+        {/* Correlation Chart */}
+        <div data-testid="section-correlation-chart">
+          <CorrelationChart />
         </div>
 
         {/* Sector Panels */}
