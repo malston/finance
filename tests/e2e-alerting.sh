@@ -121,24 +121,9 @@ if ! kill -0 "${WEBHOOK_PID}" 2>/dev/null; then
 fi
 echo "PASS: Webhook receiver running (PID ${WEBHOOK_PID})"
 
-# Determine the host IP that Docker containers can reach.
-# Prefer host.docker.internal (macOS/Windows), fall back to docker bridge gateway.
-if docker run --rm alpine ping -c 1 -W 1 host.docker.internal >/dev/null 2>&1; then
-    HOST_IP="host.docker.internal"
-else
-    HOST_IP=$(docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null || \
-        python3 -c "
-import socket
-s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-try:
-    s.connect(('8.8.8.8', 80))
-    print(s.getsockname()[0])
-finally:
-    s.close()
-")
-fi
-WEBHOOK_URL="http://${HOST_IP}:${WEBHOOK_PORT}/webhook"
-echo "Webhook URL for containers: ${WEBHOOK_URL}"
+# The Python evaluate_rules runs locally (not in Docker), so use localhost.
+WEBHOOK_URL="http://localhost:${WEBHOOK_PORT}/webhook"
+echo "Webhook URL: ${WEBHOOK_URL}"
 
 # -------------------------------------------------------------------
 # 2. Start TimescaleDB

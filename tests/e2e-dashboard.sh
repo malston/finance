@@ -410,7 +410,7 @@ for domain in private_credit ai_concentration energy_geo contagion; do
     NEWS_LEN=$(echo "${NEWS_RESPONSE}" | jq 'length')
     assert_gte "News for ${domain}" 1 "${NEWS_LEN}"
 
-    HAS_FIELDS=$(echo "${NEWS_RESPONSE}" | jq '.[0] | has("headline", "sentiment")')
+    HAS_FIELDS=$(echo "${NEWS_RESPONSE}" | jq '.[0] | has("headline") and has("sentiment")')
     assert_eq "News entry for ${domain} has required fields" "true" "${HAS_FIELDS}"
 done
 
