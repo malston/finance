@@ -13,7 +13,13 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const limitParam = url.searchParams.get("limit");
-  const limit = limitParam ? parseInt(limitParam, 10) : 10;
+  let limit = 10;
+  if (limitParam !== null) {
+    const parsedLimit = parseInt(limitParam, 10);
+    if (!Number.isNaN(parsedLimit)) {
+      limit = Math.min(50, Math.max(1, parsedLimit));
+    }
+  }
 
   try {
     const rows = await queryNewsSentiment(domain, limit);

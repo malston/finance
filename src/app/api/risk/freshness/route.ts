@@ -15,9 +15,9 @@ interface TickerFreshness {
 export async function GET(): Promise<Response> {
   try {
     const rows = await query(
-      `SELECT ticker, MAX(time) as last_updated, source
+      `SELECT DISTINCT ON (ticker) ticker, time AS last_updated, source
        FROM time_series
-       GROUP BY ticker, source`,
+       ORDER BY ticker, time DESC`,
       [],
     );
 

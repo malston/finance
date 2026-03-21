@@ -33,7 +33,13 @@ const TICKER_TO_KEY: Record<
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const daysParam = url.searchParams.get("days");
-  const days = daysParam ? parseInt(daysParam, 10) : 79;
+  let days = 79;
+  if (daysParam !== null) {
+    const parsedDays = Number.parseInt(daysParam, 10);
+    if (!Number.isNaN(parsedDays) && parsedDays > 0) {
+      days = parsedDays;
+    }
+  }
 
   try {
     const rows = await queryCorrelations(days);

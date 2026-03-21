@@ -23,11 +23,11 @@ func NewBudgetTracker(dailyMax, warnAt int) *BudgetTracker {
 // TrackCall increments the daily call counter. Returns an error if the daily
 // limit has been reached.
 func (b *BudgetTracker) TrackCall() error {
-	current := b.callCount.Load()
-	if current >= b.dailyMax {
-		return fmt.Errorf("daily Valyu API call limit reached (%d/%d)", current, b.dailyMax)
+	newCount := b.callCount.Add(1)
+	if newCount > int64(b.dailyMax) {
+		b.callCount.Add(-1)
+		return fmt.Errorf("daily Valyu API call limit reached (%d/%d)", b.dailyMax, b.dailyMax)
 	}
-	b.callCount.Add(1)
 	return nil
 }
 

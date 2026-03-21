@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { threatLabel } from "@/lib/theme";
 
 interface ThreatGaugeProps {
@@ -22,7 +23,8 @@ export function ThreatGauge({ score, color, size = 90 }: ThreatGaugeProps) {
   const totalSweep = 270;
   const scoreAngle = (Math.min(Math.max(score, 0), 100) / 100) * totalSweep;
 
-  const filterId = `glow-${score}`;
+  const uniqueId = useId();
+  const filterId = `glow-${uniqueId}`;
 
   return (
     <svg
