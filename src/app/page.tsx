@@ -5,6 +5,8 @@ import { C } from "@/lib/theme";
 import { HYCreditSpreadCard } from "@/components/hy-credit-card";
 import { TreasuryCreditCard } from "@/components/treasury-credit-card";
 import { EquityEtfCard } from "@/components/equity-etf-card";
+import { SectorPanels } from "@/components/risk/sector-panels";
+import { NewsSentimentSidebar } from "@/components/news-sentiment-sidebar";
 
 function HeaderClock() {
   const [time, setTime] = useState(new Date());
@@ -114,135 +116,129 @@ export default function DashboardPage() {
         <HeaderClock />
       </div>
 
-      {/* Main content area */}
+      {/* Main content area with sidebar */}
       <div
-        data-testid="dashboard-content"
         style={{
-          maxWidth: "960px",
+          display: "flex",
+          maxWidth: "1320px",
           margin: "0 auto",
           padding: "20px 16px",
-          display: "flex",
-          flexDirection: "column",
           gap: 16,
         }}
       >
-        {/* Composite Threat placeholder */}
+        {/* Cards column */}
         <div
-          data-testid="section-composite-threat"
+          data-testid="dashboard-content"
           style={{
-            background: C.panel,
-            border: `1px solid ${C.panelBorder}`,
-            borderRadius: 10,
-            padding: "20px 24px",
-            minHeight: 100,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 10,
-              color: C.textDim,
-              fontFamily: "var(--font-mono)",
-              letterSpacing: 2,
-              textTransform: "uppercase",
-            }}
-          >
-            Composite Systemic Risk
-          </div>
-        </div>
-
-        {/* Correlation Chart placeholder */}
-        <div
-          data-testid="section-correlation-chart"
-          style={{
-            background: C.panel,
-            border: `1px solid ${C.panelBorder}`,
-            borderRadius: 8,
-            padding: "16px 16px 8px 8px",
-            minHeight: 200,
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
-            Cross-Domain Correlation Monitor
-          </div>
-          <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>
-            BDC ↔ Big Tech 30-day rolling correlation — above 0.5 signals
-            contagion
-          </div>
-        </div>
-
-        {/* Sector Panels */}
-        <div
-          data-testid="section-sector-panels"
-          style={{
+            flex: 1,
+            minWidth: 0,
+            maxWidth: "960px",
             display: "flex",
             flexDirection: "column",
             gap: 16,
           }}
         >
-          <HYCreditSpreadCard />
-          <TreasuryCreditCard />
-          <EquityEtfCard />
-          {[
-            "AI / Tech Concentration",
-            "Energy & Geopolitical",
-            "Cross-Domain Contagion",
-          ].map((label) => (
+          {/* Composite Threat placeholder */}
+          <div
+            data-testid="section-composite-threat"
+            style={{
+              background: C.panel,
+              border: `1px solid ${C.panelBorder}`,
+              borderRadius: 10,
+              padding: "20px 24px",
+              minHeight: 100,
+            }}
+          >
             <div
-              key={label}
               style={{
-                background: C.panel,
-                border: `1px solid ${C.panelBorder}`,
-                borderRadius: 8,
-                padding: "14px 16px",
-                minHeight: 60,
-              }}
-            >
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
-                {label}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Legend */}
-        <div
-          style={{
-            display: "flex",
-            gap: 20,
-            justifyContent: "center",
-            padding: "8px 0",
-            flexWrap: "wrap",
-          }}
-        >
-          {[
-            { color: C.green, label: "LOW (0–25)" },
-            { color: C.yellow, label: "ELEVATED (26–50)" },
-            { color: C.orange, label: "HIGH (51–75)" },
-            { color: C.red, label: "CRITICAL (76–100)" },
-          ].map((l) => (
-            <div
-              key={l.label}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
                 fontSize: 10,
                 color: C.textDim,
                 fontFamily: "var(--font-mono)",
+                letterSpacing: 2,
+                textTransform: "uppercase",
               }}
             >
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: l.color,
-                  boxShadow: `0 0 4px ${l.color}60`,
-                }}
-              />
-              {l.label}
+              Composite Systemic Risk
             </div>
-          ))}
+          </div>
+
+          {/* Correlation Chart placeholder */}
+          <div
+            data-testid="section-correlation-chart"
+            style={{
+              background: C.panel,
+              border: `1px solid ${C.panelBorder}`,
+              borderRadius: 8,
+              padding: "16px 16px 8px 8px",
+              minHeight: 200,
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
+              Cross-Domain Correlation Monitor
+            </div>
+            <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>
+              BDC ↔ Big Tech 30-day rolling correlation — above 0.5 signals
+              contagion
+            </div>
+          </div>
+
+          {/* Sector Panels */}
+          <div data-testid="section-sector-panels">
+            <HYCreditSpreadCard />
+            <TreasuryCreditCard />
+            <EquityEtfCard />
+            <SectorPanels />
+          </div>
+
+          {/* Legend */}
+          <div
+            style={{
+              display: "flex",
+              gap: 20,
+              justifyContent: "center",
+              padding: "8px 0",
+              flexWrap: "wrap",
+            }}
+          >
+            {[
+              { color: C.green, label: "LOW (0–25)" },
+              { color: C.yellow, label: "ELEVATED (26–50)" },
+              { color: C.orange, label: "HIGH (51–75)" },
+              { color: C.red, label: "CRITICAL (76–100)" },
+            ].map((l) => (
+              <div
+                key={l.label}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 10,
+                  color: C.textDim,
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                <div
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: l.color,
+                    boxShadow: `0 0 4px ${l.color}60`,
+                  }}
+                />
+                {l.label}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* News Sentiment Sidebar (desktop) */}
+        <div
+          data-testid="news-sidebar-desktop"
+          style={{ flexShrink: 0 }}
+          className="news-sidebar-desktop"
+        >
+          <NewsSentimentSidebar />
         </div>
       </div>
     </div>

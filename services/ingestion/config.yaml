@@ -34,3 +34,50 @@ finnhub:
     - NG=F
   poll_interval: 5m
   rate_limit_delay: 1s
+
+valyu:
+  api_key: ${VALYU_API_KEY}
+  budget:
+    daily_max_calls: 100
+    warn_at_calls: 80
+  schedules:
+    sec_filings:
+      interval: 24h
+      bdcs:
+        - OWL
+        - ARCC
+        - BXSL
+        - OBDC
+    news_sentiment:
+      interval: 1h
+      market_hours_only: true
+      domains:
+        - private_credit
+        - ai_tech
+        - energy_geo
+        - geopolitical
+    insider_trading:
+      interval: 24h
+      tickers:
+        - OWL
+        - ARCC
+        - BXSL
+        - OBDC
+        - NVDA
+        - MSFT
+        - GOOGL
+        - META
+        - AMZN
+
+health:
+  sources:
+    finnhub:
+      staleness_threshold: 15m
+    fred:
+      staleness_threshold: 24h
+    valyu_filings:
+      staleness_threshold: 24h
+    valyu_sentiment:
+      staleness_threshold: 2h
+    valyu_insider:
+      staleness_threshold: 24h
