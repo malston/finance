@@ -9,9 +9,12 @@ import {
   Link,
   ChevronDown,
   ChevronUp,
+  AlertTriangle,
 } from "lucide-react";
 import { C } from "@/lib/theme";
 import type { DomainConfig } from "@/lib/domain-config";
+import { useSourceHealth } from "@/hooks/use-source-health";
+import { useFreshness } from "@/hooks/use-freshness";
 import { ThreatGauge } from "./threat-gauge";
 import { TickerRow } from "./ticker-row";
 
@@ -57,6 +60,8 @@ export function SectorPanel({
   defaultExpanded = false,
 }: SectorPanelProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const { isTickerStale, getTickerStaleness } = useSourceHealth();
+  const { getTickerFreshness } = useFreshness();
 
   const { data: scores } = useQuery<ScoresResponse>({
     queryKey: ["risk-scores"],
@@ -94,6 +99,7 @@ export function SectorPanel({
 
   const Icon = ICON_MAP[domain.icon];
   const ArrowIcon = expanded ? ChevronUp : ChevronDown;
+  const hasStaleTicker = domain.tickers.some((t) => isTickerStale(t.symbol));
 
   return (
     <div
@@ -126,8 +132,25 @@ export function SectorPanel({
             {Icon && <Icon size={18} />}
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 14,
+                fontWeight: 600,
+                color: C.text,
+              }}
+            >
               {domain.name}
+              {hasStaleTicker && (
+                <span
+                  data-testid="domain-stale-warning"
+                  style={{ color: C.orange }}
+                >
+                  <AlertTriangle size={14} />
+                </span>
+              )}
             </div>
             <div
               style={{
@@ -195,6 +218,13 @@ export function SectorPanel({
               series.length > 1 ? series[series.length - 2].value : latest;
             const change = prev !== 0 ? ((latest - prev) / prev) * 100 : 0;
 
+            const staleness = getTickerStaleness(ticker.symbol);
+            const staleLastSuccess = staleness?.stale
+              ? staleness.last_success
+              : undefined;
+
+            const freshness = getTickerFreshness(ticker.symbol);
+
             return (
               <TickerRow
                 key={ticker.symbol}
@@ -205,6 +235,9 @@ export function SectorPanel({
                 timeseries={values}
                 color={domain.color}
                 inverted={ticker.inverted}
+                staleLastSuccess={staleLastSuccess}
+                freshnessLastUpdated={freshness?.last_updated}
+                freshnessSource={freshness?.source}
               />
             );
           })}
