@@ -5,6 +5,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY index_builder.py run.py ./
+COPY index_builder.py correlator.py run.py ./
 
 CMD ["python", "run.py"]

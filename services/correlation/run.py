@@ -8,6 +8,7 @@ import os
 import sys
 import time
 
+from correlator import compute_correlations
 from index_builder import compute_domain_indices
 
 logging.basicConfig(
@@ -31,6 +32,11 @@ def main() -> None:
             compute_domain_indices(db_url)
         except Exception:
             logger.exception("Index computation failed")
+
+        try:
+            compute_correlations(db_url)
+        except Exception:
+            logger.exception("Correlation computation failed")
         time.sleep(interval)
 
 
