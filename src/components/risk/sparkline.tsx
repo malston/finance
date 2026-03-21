@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 interface SparklineProps {
   data: number[];
   color: string;
@@ -17,7 +19,8 @@ export function Sparkline({
   height = 40,
   alert = false,
 }: SparklineProps) {
-  const gradientId = `sparkline-grad-${color.replace("#", "")}`;
+  const uniqueId = useId();
+  const gradientId = `sparkline-grad-${uniqueId}`;
 
   if (data.length === 0) {
     return (

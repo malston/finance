@@ -27,9 +27,14 @@ export function JargonTooltip({ term, children }: JargonTooltipProps) {
       style={{ position: "relative", display: "inline-block" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
     >
       <span
         data-testid="jargon-trigger"
+        tabIndex={0}
+        role="term"
+        aria-describedby={hovered ? "jargon-tooltip-content" : undefined}
         style={{
           borderBottom: "1px dotted currentColor",
           cursor: "help",
