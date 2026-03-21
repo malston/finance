@@ -14,6 +14,7 @@ import {
 import { C } from "@/lib/theme";
 import type { DomainConfig } from "@/lib/domain-config";
 import { useSourceHealth } from "@/hooks/use-source-health";
+import { useFreshness } from "@/hooks/use-freshness";
 import { ThreatGauge } from "./threat-gauge";
 import { TickerRow } from "./ticker-row";
 
@@ -60,6 +61,7 @@ export function SectorPanel({
 }: SectorPanelProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const { isTickerStale, getTickerStaleness } = useSourceHealth();
+  const { getTickerFreshness } = useFreshness();
 
   const { data: scores } = useQuery<ScoresResponse>({
     queryKey: ["risk-scores"],
@@ -221,6 +223,8 @@ export function SectorPanel({
               ? staleness.last_success
               : undefined;
 
+            const freshness = getTickerFreshness(ticker.symbol);
+
             return (
               <TickerRow
                 key={ticker.symbol}
@@ -232,6 +236,8 @@ export function SectorPanel({
                 color={domain.color}
                 inverted={ticker.inverted}
                 staleLastSuccess={staleLastSuccess}
+                freshnessLastUpdated={freshness?.last_updated}
+                freshnessSource={freshness?.source}
               />
             );
           })}

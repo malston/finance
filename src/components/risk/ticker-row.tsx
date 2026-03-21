@@ -1,6 +1,7 @@
 import { C } from "@/lib/theme";
 import { Sparkline } from "./sparkline";
 import { StaleBadge } from "./stale-badge";
+import { FreshnessDot } from "./freshness-dot";
 import { AlertTriangle } from "lucide-react";
 
 interface TickerRowProps {
@@ -13,6 +14,8 @@ interface TickerRowProps {
   inverted?: boolean;
   alertMessage?: string;
   staleLastSuccess?: string | null;
+  freshnessLastUpdated?: string | null;
+  freshnessSource?: string;
 }
 
 /**
@@ -29,6 +32,8 @@ export function TickerRow({
   inverted = false,
   alertMessage,
   staleLastSuccess,
+  freshnessLastUpdated,
+  freshnessSource,
 }: TickerRowProps) {
   const isStale = staleLastSuccess !== undefined;
   const isPositive = change >= 0;
@@ -59,12 +64,21 @@ export function TickerRow({
           <div
             data-testid="ticker-symbol"
             style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
               fontFamily: "var(--font-mono), JetBrains Mono, monospace",
               fontSize: 12,
               fontWeight: 600,
               color: C.text,
             }}
           >
+            {freshnessSource !== undefined && (
+              <FreshnessDot
+                lastUpdated={freshnessLastUpdated ?? null}
+                source={freshnessSource ?? "finnhub"}
+              />
+            )}
             {symbol}
           </div>
           {label !== symbol && (
