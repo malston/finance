@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -98,11 +99,15 @@ func (c *Client) FetchSeries(ctx context.Context, seriesID string, startDate str
 
 		val, err := strconv.ParseFloat(raw.Value, 64)
 		if err != nil {
+			slog.Warn("skipping unparseable FRED observation value",
+				"series_id", seriesID, "raw_value", raw.Value, "error", err)
 			continue
 		}
 
 		date, err := time.Parse("2006-01-02", raw.Date)
 		if err != nil {
+			slog.Warn("skipping unparseable FRED observation date",
+				"series_id", seriesID, "raw_date", raw.Date, "error", err)
 			continue
 		}
 

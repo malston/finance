@@ -61,7 +61,7 @@ export async function GET(_request: Request): Promise<Response> {
       }
     }
 
-    return NextResponse.json({
+    const response: Record<string, unknown> = {
       composite: {
         score: compositeScore,
         level: compositeLevel?.level ?? null,
@@ -69,7 +69,14 @@ export async function GET(_request: Request): Promise<Response> {
       },
       domains,
       updated_at: updatedAt,
-    });
+    };
+
+    if (compositeScore === null) {
+      response.stale = true;
+      response.message = "Scoring pipeline has not produced results yet";
+    }
+
+    return NextResponse.json(response);
   } catch (err) {
     console.error("[/api/risk/scores]", err);
     return NextResponse.json(

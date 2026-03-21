@@ -18,7 +18,7 @@ CONFIG_PATH = os.path.join(
     "alert_config.yaml",
 )
 
-MANAGED_TICKERS = ["SCORE_COMPOSITE", "VIX", "CORR_MAX"]
+MANAGED_TICKERS = ["SCORE_COMPOSITE", "VIX", "SCORE_CONTAGION"]
 
 
 @pytest.fixture(scope="module")
@@ -246,12 +246,12 @@ class TestIntegrationAlertRulesEngine:
         """contagion_spike has consecutive_readings=2, should fire on 2nd reading."""
         from alerting.rules_engine import evaluate_rules
 
-        _seed_reading(db_conn, "CORR_MAX", 0.6, time_offset_minutes=1)
+        _seed_reading(db_conn, "SCORE_CONTAGION", 0.6, time_offset_minutes=1)
         alerts = evaluate_rules(db_url, alert_config)
         contagion_alerts = [a for a in alerts if a["rule_id"] == "contagion_spike"]
         assert len(contagion_alerts) == 0
 
-        _seed_reading(db_conn, "CORR_MAX", 0.7, time_offset_minutes=0)
+        _seed_reading(db_conn, "SCORE_CONTAGION", 0.7, time_offset_minutes=0)
         alerts = evaluate_rules(db_url, alert_config)
         contagion_alerts = [a for a in alerts if a["rule_id"] == "contagion_spike"]
         assert len(contagion_alerts) == 1

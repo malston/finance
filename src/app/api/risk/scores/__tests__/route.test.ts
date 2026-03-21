@@ -114,6 +114,8 @@ describe("GET /api/risk/scores", () => {
     expect(body.composite.score).toBeNull();
     expect(body.composite.level).toBeNull();
     expect(body.composite.color).toBeNull();
+    expect(body.stale).toBe(true);
+    expect(body.message).toBe("Scoring pipeline has not produced results yet");
   });
 
   it("queries correct tickers", async () => {

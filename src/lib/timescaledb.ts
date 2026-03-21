@@ -57,7 +57,7 @@ export async function queryTimeSeries(
     SELECT time, ticker, value, source
     FROM time_series
     WHERE ticker = $1
-      AND time >= NOW() - ($2 || ' days')::INTERVAL
+      AND time >= NOW() - ($2 * INTERVAL '1 day')
     ORDER BY time ASC
   `;
 
@@ -87,7 +87,7 @@ export async function queryCorrelations(
     SELECT time, ticker, value, source
     FROM time_series
     WHERE ticker = ANY($1)
-      AND time >= NOW() - ($2 || ' days')::INTERVAL
+      AND time >= NOW() - ($2 * INTERVAL '1 day')
     ORDER BY time ASC
   `;
 

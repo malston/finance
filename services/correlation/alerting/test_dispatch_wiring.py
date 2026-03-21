@@ -2,65 +2,112 @@
 
 Tests that fired alerts get dispatched and that alert_history.delivered
 is updated after successful dispatch.
+
+Requires DATABASE_URL environment variable pointing to a TimescaleDB instance.
 """
 
-import json
-from unittest.mock import patch
+import os
 
+import psycopg2
 import pytest
 import responses
 
-from alerting.dispatch import dispatch_alert
-from alerting.dispatch import update_delivery_status
+from alerting.dispatch import dispatch_alert, update_delivery_status
+
+
+@pytest.fixture(scope="module")
+def db_url():
+    """Database URL from environment."""
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        pytest.skip("DATABASE_URL environment variable is required for integration tests")
+    return url
+
+
+@pytest.fixture(scope="module")
+def db_conn(db_url):
+    """Shared database connection for the test module."""
+    conn = psycopg2.connect(db_url)
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS alert_history (
+                id           SERIAL PRIMARY KEY,
+                rule_id      TEXT NOT NULL,
+                triggered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                value        DOUBLE PRECISION NOT NULL,
+                message      TEXT NOT NULL,
+                channels     TEXT[] NOT NULL,
+                delivered    BOOLEAN NOT NULL DEFAULT FALSE
+            )
+        """)
+    yield conn
+    conn.close()
+
+
+@pytest.fixture(autouse=True)
+def clean_alert_history(db_conn):
+    """Remove all alert_history rows before and after each test."""
+    with db_conn.cursor() as cur:
+        cur.execute("DELETE FROM alert_history")
+    yield
+    with db_conn.cursor() as cur:
+        cur.execute("DELETE FROM alert_history")
+
+
+def _seed_alert(db_conn, rule_id, value=80.0, message="test alert", channels=None):
+    """Insert a test alert into alert_history and return its id."""
+    if channels is None:
+        channels = ["email", "slack"]
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO alert_history (rule_id, value, message, channels) "
+            "VALUES (%s, %s, %s, %s) RETURNING id",
+            (rule_id, value, message, channels),
+        )
+        return cur.fetchone()[0]
 
 
 class TestUpdateDeliveryStatus:
-    """Test marking alert_history rows as delivered."""
+    """Test marking alert_history rows as delivered using a real DB."""
 
-    def test_update_marks_delivered_true(self):
-        """Verify update_delivery_status sets delivered=true and records channels."""
-        # Use a mock connection to verify the SQL is correct
-        from unittest.mock import MagicMock
-
-        conn = MagicMock()
-        cursor = MagicMock()
-        conn.cursor.return_value.__enter__ = lambda s: cursor
-        conn.cursor.return_value.__exit__ = lambda s, *a: None
+    def test_update_marks_delivered_true(self, db_conn):
+        """Verify update_delivery_status sets delivered=true when at least one channel succeeds."""
+        _seed_alert(db_conn, "composite_critical")
 
         update_delivery_status(
-            conn,
+            db_conn,
             rule_id="composite_critical",
             channel_results={"email": True, "slack": True, "browser_push": False},
         )
 
-        cursor.execute.assert_called_once()
-        sql = cursor.execute.call_args[0][0]
-        params = cursor.execute.call_args[0][1]
-        assert "delivered" in sql.lower()
-        assert "alert_history" in sql.lower()
-        assert params[0] is True  # delivered = True
-        assert "email" in params[1]  # successful channels
-        assert "slack" in params[1]
-        assert "browser_push" not in params[1]
-        assert params[2] == "composite_critical"
+        with db_conn.cursor() as cur:
+            cur.execute(
+                "SELECT delivered FROM alert_history WHERE rule_id = 'composite_critical' "
+                "ORDER BY id DESC LIMIT 1"
+            )
+            row = cur.fetchone()
+            assert row is not None
+            assert row[0] is True
 
-    def test_update_marks_not_delivered_when_all_fail(self):
+    def test_update_marks_not_delivered_when_all_fail(self, db_conn):
         """When all channels fail, delivered stays false."""
-        from unittest.mock import MagicMock
-
-        conn = MagicMock()
-        cursor = MagicMock()
-        conn.cursor.return_value.__enter__ = lambda s: cursor
-        conn.cursor.return_value.__exit__ = lambda s, *a: None
+        _seed_alert(db_conn, "vix_spike")
 
         update_delivery_status(
-            conn,
+            db_conn,
             rule_id="vix_spike",
             channel_results={"slack": False},
         )
 
-        params = cursor.execute.call_args[0][1]
-        assert params[0] is False  # delivered = False
+        with db_conn.cursor() as cur:
+            cur.execute(
+                "SELECT delivered FROM alert_history WHERE rule_id = 'vix_spike' "
+                "ORDER BY id DESC LIMIT 1"
+            )
+            row = cur.fetchone()
+            assert row is not None
+            assert row[0] is False
 
 
 class TestDispatchAndRecord:

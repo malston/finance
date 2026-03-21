@@ -35,7 +35,7 @@ alerts:
     - id: contagion_spike
       name: "Contagion correlation above threshold"
       condition: "max_correlation > 0.5"
-      ticker: CORR_MAX
+      ticker: SCORE_CONTAGION
       threshold: 0.5
       operator: ">"
       consecutive_readings: 2

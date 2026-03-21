@@ -12,6 +12,8 @@ from typing import Any
 
 import psycopg2
 
+from scoring.common import fetch_latest_value
+
 logger = logging.getLogger(__name__)
 
 
@@ -72,22 +74,6 @@ def compute_composite_from_values(
     return round(max(0.0, min(100.0, composite)), 2)
 
 
-def _fetch_latest_value(
-    conn: psycopg2.extensions.connection,
-    ticker: str,
-) -> float | None:
-    """Fetch the most recent value for a ticker from time_series."""
-    with conn.cursor() as cur:
-        cur.execute(
-            "SELECT value FROM time_series "
-            "WHERE ticker = %s "
-            "ORDER BY time DESC LIMIT 1",
-            (ticker,),
-        )
-        row = cur.fetchone()
-    return row[0] if row else None
-
-
 def _write_score(
     conn: psycopg2.extensions.connection,
     score: float,
@@ -125,7 +111,7 @@ def score_composite(db_url: str, config: dict[str, Any]) -> float:
         scores: dict[str, float] = {}
         for name, domain_config in domains.items():
             ticker = domain_config["ticker"]
-            value = _fetch_latest_value(conn, ticker)
+            value = fetch_latest_value(conn, ticker)
             if value is not None:
                 scores[name] = value
 

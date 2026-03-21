@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -114,6 +115,9 @@ func (s *Store) LatestValue(ctx context.Context, ticker string) (float64, time.T
 		`SELECT value, time FROM time_series WHERE ticker = $1 ORDER BY time DESC LIMIT 1`, ticker,
 	).Scan(&value, &ts)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, time.Time{}, nil
+		}
 		return 0, time.Time{}, fmt.Errorf("querying latest value for %s: %w", ticker, err)
 	}
 	if value == nil || ts == nil {

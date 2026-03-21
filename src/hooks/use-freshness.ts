@@ -12,6 +12,8 @@ interface FreshnessResponse {
 
 interface FreshnessResult {
   getTickerFreshness: (ticker: string) => TickerFreshness | null;
+  isError: boolean;
+  error: Error | null;
 }
 
 /**
@@ -19,7 +21,7 @@ interface FreshnessResult {
  * Auto-refreshes every 30 seconds.
  */
 export function useFreshness(): FreshnessResult {
-  const { data } = useQuery<FreshnessResponse>({
+  const { data, isError, error } = useQuery<FreshnessResponse>({
     queryKey: ["ticker-freshness"],
     queryFn: async () => {
       const res = await fetch("/api/risk/freshness");
@@ -31,8 +33,11 @@ export function useFreshness(): FreshnessResult {
   });
 
   function getTickerFreshness(ticker: string): TickerFreshness | null {
+    if (isError) {
+      return { last_updated: null, source: "", status: "unknown" };
+    }
     return data?.tickers[ticker] ?? null;
   }
 
-  return { getTickerFreshness };
+  return { getTickerFreshness, isError, error: error ?? null };
 }

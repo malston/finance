@@ -60,6 +60,8 @@ type ExtendedStore interface {
 // Returns the NAV data for downstream discount computation.
 func FetchFilings(ctx context.Context, client *Client, s Store, budget *BudgetTracker, bdcs []string) ([]NAVData, error) {
 	var navs []NAVData
+	total := len(bdcs)
+	successCount := 0
 
 	for _, ticker := range bdcs {
 		if err := budget.TrackCall(); err != nil {
@@ -82,6 +84,7 @@ func FetchFilings(ctx context.Context, client *Client, s Store, budget *BudgetTr
 			continue
 		}
 
+		successCount++
 		navs = append(navs, NAVData{Ticker: ticker, NAVPerShare: nav})
 
 		point := store.TimeSeriesPoint{
@@ -95,12 +98,19 @@ func FetchFilings(ctx context.Context, client *Client, s Store, budget *BudgetTr
 		}
 	}
 
+	if total > 0 && successCount == 0 {
+		return navs, fmt.Errorf("all %d filing lookups failed", total)
+	}
+
 	return navs, nil
 }
 
 // FetchNewsSentiment searches Valyu for news across risk domains and writes
 // headlines with sentiment scores to the news_sentiment table.
 func FetchNewsSentiment(ctx context.Context, client *Client, es ExtendedStore, budget *BudgetTracker, domains []string) error {
+	total := len(domains)
+	successCount := 0
+
 	for _, domain := range domains {
 		if err := budget.TrackCall(); err != nil {
 			slog.Warn("budget limit reached, stopping news scan", "error", err)
@@ -130,6 +140,7 @@ func FetchNewsSentiment(ctx context.Context, client *Client, es ExtendedStore, b
 		}
 
 		if len(rows) > 0 {
+			successCount++
 			if err := es.WriteNewsSentiment(ctx, rows); err != nil {
 				slog.Error("writing news sentiment", "domain", domain, "error", err)
 			}
@@ -151,12 +162,19 @@ func FetchNewsSentiment(ctx context.Context, client *Client, es ExtendedStore, b
 		}
 	}
 
+	if total > 0 && successCount == 0 {
+		return fmt.Errorf("all %d news sentiment lookups failed", total)
+	}
+
 	return nil
 }
 
 // FetchInsiderTrades searches Valyu for Form 4 insider transactions and writes
 // results to the insider_trades table.
 func FetchInsiderTrades(ctx context.Context, client *Client, es ExtendedStore, budget *BudgetTracker, tickers []string) error {
+	total := len(tickers)
+	successCount := 0
+
 	for _, ticker := range tickers {
 		if err := budget.TrackCall(); err != nil {
 			slog.Warn("budget limit reached, stopping insider search", "error", err)
@@ -178,10 +196,15 @@ func FetchInsiderTrades(ctx context.Context, client *Client, es ExtendedStore, b
 		}
 
 		if len(rows) > 0 {
+			successCount++
 			if err := es.WriteInsiderTrades(ctx, rows); err != nil {
 				slog.Error("writing insider trades", "ticker", ticker, "error", err)
 			}
 		}
+	}
+
+	if total > 0 && successCount == 0 {
+		return fmt.Errorf("all %d insider trade lookups failed", total)
 	}
 
 	return nil

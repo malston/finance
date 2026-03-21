@@ -122,6 +122,9 @@ func main() {
 		go func() {
 			if err := finnhub.StartWebSocket(ctx, wsURL, cfg.Finnhub.APIKey, cfg.Finnhub.WebSocketTickers, wsSink); err != nil {
 				slog.Error("WebSocket stopped", "error", err)
+				if hErr := tsStore.UpdateSourceHealth(ctx, "finnhub_ws", err); hErr != nil {
+					slog.Warn("updating finnhub_ws health", "error", hErr)
+				}
 			}
 		}()
 
@@ -167,10 +170,10 @@ func main() {
 		valyuInsiderTicker = time.NewTicker(cfg.Valyu.Schedules.InsiderTrading.Interval)
 		defer valyuInsiderTicker.Stop()
 
-		go fetchValyuFilings(ctx, valyuClient, valyuStore, valyuBudget, cfg)
-		go fetchValyuInsider(ctx, valyuClient, valyuStore, valyuBudget, cfg)
+		go fetchValyuFilings(ctx, valyuClient, valyuStore, valyuBudget, cfg, tsStore)
+		go fetchValyuInsider(ctx, valyuClient, valyuStore, valyuBudget, cfg, tsStore)
 		if valyu.IsMarketHours(time.Now()) {
-			go fetchValyuSentiment(ctx, valyuClient, valyuStore, valyuBudget, cfg)
+			go fetchValyuSentiment(ctx, valyuClient, valyuStore, valyuBudget, cfg, tsStore)
 		}
 	}
 
@@ -207,13 +210,13 @@ func main() {
 				fetchFinnhub(ctx, finnhubClient, tsStore, cfg)
 			}
 		case <-filingsCh:
-			go fetchValyuFilings(ctx, valyuClient, valyuStore, valyuBudget, cfg)
+			go fetchValyuFilings(ctx, valyuClient, valyuStore, valyuBudget, cfg, tsStore)
 		case <-sentimentCh:
 			if !cfg.Valyu.Schedules.NewsSentiment.MarketHoursOnly || valyu.IsMarketHours(time.Now()) {
-				go fetchValyuSentiment(ctx, valyuClient, valyuStore, valyuBudget, cfg)
+				go fetchValyuSentiment(ctx, valyuClient, valyuStore, valyuBudget, cfg, tsStore)
 			}
 		case <-insiderCh:
-			go fetchValyuInsider(ctx, valyuClient, valyuStore, valyuBudget, cfg)
+			go fetchValyuInsider(ctx, valyuClient, valyuStore, valyuBudget, cfg, tsStore)
 		case <-budgetResetTicker.C:
 			today := time.Now().YearDay()
 			if today != lastResetDay {
@@ -258,14 +261,17 @@ func fetchFinnhub(ctx context.Context, client *finnhub.Client, tsStore *store.St
 	}
 }
 
-func fetchValyuFilings(ctx context.Context, client *valyu.Client, es valyu.ExtendedStore, budget *valyu.BudgetTracker, cfg *config.Config) {
+func fetchValyuFilings(ctx context.Context, client *valyu.Client, es valyu.ExtendedStore, budget *valyu.BudgetTracker, cfg *config.Config, tsStore *store.Store) {
 	if budget.IsWarning() {
 		slog.Warn("Valyu budget warning", "daily_count", budget.DailyCount())
 	}
 	bdcs := cfg.Valyu.Schedules.SECFilings.BDCs
-	navs, err := valyu.FetchFilings(ctx, client, es, budget, bdcs)
-	if err != nil {
-		slog.Warn("Valyu filing fetch failed", "error", err)
+	navs, fetchErr := valyu.FetchFilings(ctx, client, es, budget, bdcs)
+	if hErr := tsStore.UpdateSourceHealth(ctx, "valyu_filings", fetchErr); hErr != nil {
+		slog.Warn("updating valyu_filings health", "error", hErr)
+	}
+	if fetchErr != nil {
+		slog.Warn("Valyu filing fetch failed", "error", fetchErr)
 		return
 	}
 	if len(navs) > 0 {
@@ -282,23 +288,31 @@ func fetchValyuFilings(ctx context.Context, client *valyu.Client, es valyu.Exten
 	}
 }
 
-func fetchValyuSentiment(ctx context.Context, client *valyu.Client, es valyu.ExtendedStore, budget *valyu.BudgetTracker, cfg *config.Config) {
+func fetchValyuSentiment(ctx context.Context, client *valyu.Client, es valyu.ExtendedStore, budget *valyu.BudgetTracker, cfg *config.Config, tsStore *store.Store) {
 	if budget.IsWarning() {
 		slog.Warn("Valyu budget warning", "daily_count", budget.DailyCount())
 	}
 	domains := cfg.Valyu.Schedules.NewsSentiment.Domains
-	if err := valyu.FetchNewsSentiment(ctx, client, es, budget, domains); err != nil {
-		slog.Warn("Valyu sentiment fetch failed", "error", err)
+	fetchErr := valyu.FetchNewsSentiment(ctx, client, es, budget, domains)
+	if hErr := tsStore.UpdateSourceHealth(ctx, "valyu_sentiment", fetchErr); hErr != nil {
+		slog.Warn("updating valyu_sentiment health", "error", hErr)
+	}
+	if fetchErr != nil {
+		slog.Warn("Valyu sentiment fetch failed", "error", fetchErr)
 	}
 }
 
-func fetchValyuInsider(ctx context.Context, client *valyu.Client, es valyu.ExtendedStore, budget *valyu.BudgetTracker, cfg *config.Config) {
+func fetchValyuInsider(ctx context.Context, client *valyu.Client, es valyu.ExtendedStore, budget *valyu.BudgetTracker, cfg *config.Config, tsStore *store.Store) {
 	if budget.IsWarning() {
 		slog.Warn("Valyu budget warning", "daily_count", budget.DailyCount())
 	}
 	tickers := cfg.Valyu.Schedules.InsiderTrading.Tickers
-	if err := valyu.FetchInsiderTrades(ctx, client, es, budget, tickers); err != nil {
-		slog.Warn("Valyu insider trade fetch failed", "error", err)
+	fetchErr := valyu.FetchInsiderTrades(ctx, client, es, budget, tickers)
+	if hErr := tsStore.UpdateSourceHealth(ctx, "valyu_insider", fetchErr); hErr != nil {
+		slog.Warn("updating valyu_insider health", "error", hErr)
+	}
+	if fetchErr != nil {
+		slog.Warn("Valyu insider trade fetch failed", "error", fetchErr)
 	}
 }
 
