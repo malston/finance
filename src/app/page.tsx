@@ -46,16 +46,6 @@ function HeaderClock() {
       >
         {time.toLocaleTimeString()}
       </div>
-      <div
-        style={{
-          fontSize: 9,
-          color: C.orange,
-          fontFamily: "var(--font-mono)",
-          marginTop: 3,
-        }}
-      >
-        ◉ SIMULATED DATA — PROTOTYPE
-      </div>
     </div>
   );
 }

@@ -124,12 +124,6 @@ describe("Dashboard page", () => {
     expect(container.style.maxWidth).toBe("960px");
   });
 
-  it("renders the prototype data notice", () => {
-    mockAllFetches();
-    render(<DashboardPage />, { wrapper: createWrapper() });
-    expect(screen.getByText(/SIMULATED DATA/)).toBeInTheDocument();
-  });
-
   it("renders the Treasury & Credit Spreads card", () => {
     mockAllFetches();
     render(<DashboardPage />, { wrapper: createWrapper() });
