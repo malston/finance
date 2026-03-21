@@ -25,6 +25,8 @@ services:
     environment:
       DATABASE_URL: "postgres://risk:${TIMESCALEDB_PASSWORD:-riskmonitor}@timescaledb:5432/riskmonitor"
       FRED_API_KEY: "${FRED_API_KEY:-}"
+      FINNHUB_API_KEY: "${FINNHUB_API_KEY}"
+      VALYU_API_KEY: "${VALYU_API_KEY:-}"
     restart: unless-stopped
 
   correlation:
