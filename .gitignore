@@ -53,3 +53,8 @@ docs/
 
 # test scripts
 test-scripts/
+
+# Python virtual environments
+.venv/
+__pycache__/
+.pytest_cache/

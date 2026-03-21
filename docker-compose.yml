@@ -27,6 +27,17 @@ services:
       FRED_API_KEY: "${FRED_API_KEY:-}"
     restart: unless-stopped
 
+  correlation:
+    build:
+      context: ./services/correlation
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgres://risk:${TIMESCALEDB_PASSWORD:-riskmonitor}@timescaledb:5432/riskmonitor"
+      COMPUTE_INTERVAL_SECONDS: "300"
+    restart: unless-stopped
+
   app:
     build:
       context: .
