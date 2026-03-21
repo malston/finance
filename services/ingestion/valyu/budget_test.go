@@ -3,7 +3,7 @@ package valyu_test
 import (
 	"testing"
 
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/valyu"
+	"github.com/malston/financial-risk-monitor/services/ingestion/valyu"
 )
 
 func TestBudgetTracker_TrackCall_IncrementsCount(t *testing.T) {

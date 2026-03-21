@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/fred"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/scheduler"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
+	"github.com/malston/financial-risk-monitor/services/ingestion/fred"
+	"github.com/malston/financial-risk-monitor/services/ingestion/scheduler"
+	"github.com/malston/financial-risk-monitor/services/ingestion/store"
 )
 
 // fakeStore implements scheduler.Store for testing without a real database.

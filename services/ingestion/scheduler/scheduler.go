@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/fred"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
+	"github.com/malston/financial-risk-monitor/services/ingestion/fred"
+	"github.com/malston/financial-risk-monitor/services/ingestion/store"
 )
 
 // Store defines the persistence operations the scheduler needs.

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
+	"github.com/malston/financial-risk-monitor/services/ingestion/store"
 )
 
 // LatestValueStore provides access to the most recent value for a ticker.

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/config"
+	"github.com/malston/financial-risk-monitor/services/ingestion/config"
 )
 
 func TestLoadConfig_ParsesHealthStalenessThresholds(t *testing.T) {

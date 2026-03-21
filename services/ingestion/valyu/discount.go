@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
+	"github.com/malston/financial-risk-monitor/services/ingestion/store"
 )
 
 // NAVData holds the net asset value per share for a BDC ticker.

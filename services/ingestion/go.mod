@@ -1,4 +1,4 @@
-module github.com/yorkeccak/financial-risk-monitor/services/ingestion
+module github.com/malston/financial-risk-monitor/services/ingestion
 
 go 1.25.5
 

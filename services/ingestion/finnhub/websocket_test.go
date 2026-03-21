@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/finnhub"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
+	"github.com/malston/financial-risk-monitor/services/ingestion/finnhub"
+	"github.com/malston/financial-risk-monitor/services/ingestion/store"
 )
 
 var upgrader = websocket.Upgrader{

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
+	"github.com/malston/financial-risk-monitor/services/ingestion/store"
 )
 
 // BDC CIK mappings for SEC EDGAR searches.
@@ -78,13 +78,13 @@ func FetchFilings(ctx context.Context, client *Client, s Store, budget *BudgetTr
 			continue
 		}
 
+		successCount++ // API call succeeded, even if NAV extraction fails
+
 		nav := extractNAV(results)
 		if nav == 0 {
 			slog.Warn("no NAV found in filing results", "ticker", ticker)
 			continue
 		}
-
-		successCount++
 		navs = append(navs, NAVData{Ticker: ticker, NAVPerShare: nav})
 
 		point := store.TimeSeriesPoint{

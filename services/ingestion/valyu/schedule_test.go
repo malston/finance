@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/valyu"
+	"github.com/malston/financial-risk-monitor/services/ingestion/valyu"
 )
 
 func TestIsMarketHours_DuringTradingHours(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
+	"github.com/malston/financial-risk-monitor/services/ingestion/store"
 )
 
 // StoreAdapter wraps a *store.Store to implement the ExtendedStore interface,

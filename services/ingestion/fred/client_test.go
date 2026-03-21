@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/fred"
+	"github.com/malston/financial-risk-monitor/services/ingestion/fred"
 )
 
 func TestFetchSeries_ParsesObservations(t *testing.T) {

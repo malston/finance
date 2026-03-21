@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
+	"github.com/malston/financial-risk-monitor/services/ingestion/store"
 )
 
 // Quote holds the parsed fields from a Finnhub /quote response.

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/finnhub"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
+	"github.com/malston/financial-risk-monitor/services/ingestion/finnhub"
+	"github.com/malston/financial-risk-monitor/services/ingestion/store"
 )
 
 func TestFetchQuote_ParsesResponse(t *testing.T) {

@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/computed"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/config"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/finnhub"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/fred"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/scheduler"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/valyu"
+	"github.com/malston/financial-risk-monitor/services/ingestion/computed"
+	"github.com/malston/financial-risk-monitor/services/ingestion/config"
+	"github.com/malston/financial-risk-monitor/services/ingestion/finnhub"
+	"github.com/malston/financial-risk-monitor/services/ingestion/fred"
+	"github.com/malston/financial-risk-monitor/services/ingestion/scheduler"
+	"github.com/malston/financial-risk-monitor/services/ingestion/store"
+	"github.com/malston/financial-risk-monitor/services/ingestion/valyu"
 )
 
 const (

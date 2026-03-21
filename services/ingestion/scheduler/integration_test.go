@@ -16,9 +16,9 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/fred"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/scheduler"
-	"github.com/yorkeccak/financial-risk-monitor/services/ingestion/store"
+	"github.com/malston/financial-risk-monitor/services/ingestion/fred"
+	"github.com/malston/financial-risk-monitor/services/ingestion/scheduler"
+	"github.com/malston/financial-risk-monitor/services/ingestion/store"
 )
 
 func initSQLPath() string {
