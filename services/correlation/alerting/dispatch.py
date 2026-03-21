@@ -23,7 +23,7 @@ CHANNEL_HANDLERS = {
 def dispatch_alert(
     alert: dict[str, Any],
     channels_config: dict[str, Any],
-) -> dict[str, bool]:
+) -> dict[str, bool | None]:
     """Dispatch a fired alert to all channels listed in the alert.
 
     Only dispatches to channels that appear in the alert's channels list.
@@ -35,9 +35,10 @@ def dispatch_alert(
         channels_config: Per-channel configuration keyed by channel name.
 
     Returns:
-        Dict mapping channel name to success/failure boolean.
+        Dict mapping channel name to True (success), False (failed), or
+        None (disabled/skipped).
     """
-    results: dict[str, bool] = {}
+    results: dict[str, bool | None] = {}
 
     for channel_name in alert.get("channels", []):
         handler = CHANNEL_HANDLERS.get(channel_name)
@@ -48,7 +49,8 @@ def dispatch_alert(
 
         config = channels_config.get(channel_name, {})
         if not config.get("enabled", False):
-            results[channel_name] = False
+            logger.debug("Channel %s is disabled, skipping", channel_name)
+            results[channel_name] = None
             continue
 
         try:

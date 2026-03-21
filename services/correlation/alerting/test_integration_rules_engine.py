@@ -256,6 +256,46 @@ class TestIntegrationAlertRulesEngine:
         contagion_alerts = [a for a in alerts if a["rule_id"] == "contagion_spike"]
         assert len(contagion_alerts) == 1
 
+    def test_ac_same_value_does_not_increment_consecutive_count(self, db_conn, db_url, alert_config):
+        """AC: Seeding the same value multiple times does not increment consecutive_count.
+
+        The rules engine only increments consecutive_count when the value changes,
+        treating repeated identical values as the same reading. Three identical
+        readings should leave consecutive_count at 1 and the rule should not fire.
+        """
+        from alerting.rules_engine import evaluate_rules
+
+        # Seed 3 identical readings above threshold (composite_critical needs 3)
+        _seed_reading(db_conn, "SCORE_COMPOSITE", 80.0, time_offset_minutes=2)
+        evaluate_rules(db_url, alert_config)
+
+        _seed_reading(db_conn, "SCORE_COMPOSITE", 80.0, time_offset_minutes=1)
+        evaluate_rules(db_url, alert_config)
+
+        _seed_reading(db_conn, "SCORE_COMPOSITE", 80.0, time_offset_minutes=0)
+        alerts = evaluate_rules(db_url, alert_config)
+
+        # consecutive_count should stay at 1 since the value never changed
+        with db_conn.cursor() as cur:
+            cur.execute(
+                "SELECT consecutive_count FROM alert_state WHERE rule_id = 'composite_critical'"
+            )
+            row = cur.fetchone()
+            assert row is not None
+            assert row[0] == 1, (
+                f"Expected consecutive_count=1 for repeated identical values, got {row[0]}"
+            )
+
+        # Alert should NOT have fired (needs 3, only counted 1)
+        composite_alerts = [a for a in alerts if a["rule_id"] == "composite_critical"]
+        assert len(composite_alerts) == 0, "Same-value readings should not reach consecutive threshold"
+
+        with db_conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM alert_history WHERE rule_id = 'composite_critical'"
+            )
+            assert cur.fetchone()[0] == 0
+
     def test_no_data_does_not_fire(self, db_conn, db_url, alert_config):
         """When no time_series data exists for a ticker, no alert fires."""
         from alerting.rules_engine import evaluate_rules

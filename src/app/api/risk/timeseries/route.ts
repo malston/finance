@@ -26,7 +26,7 @@ export async function GET(request: Request): Promise<Response> {
     const rows = await queryTimeSeries(ticker, days);
     return NextResponse.json(rows);
   } catch (err) {
-    console.error("TimescaleDB query failed:", err);
+    console.error("[/api/risk/timeseries]", err);
     return NextResponse.json(
       { error: "Failed to query time series data" },
       { status: 500 },

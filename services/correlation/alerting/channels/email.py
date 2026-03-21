@@ -1,5 +1,6 @@
 """Email alert dispatch via SendGrid API."""
 
+import html
 import json
 import logging
 
@@ -19,12 +20,16 @@ def format_email_html(alert: dict) -> tuple[str, str]:
     Returns:
         Tuple of (subject, html_body).
     """
-    subject = f"[RISK ALERT] {alert['rule_id']} - value {alert['value']}"
+    rule_id = html.escape(str(alert['rule_id']))
+    message = html.escape(str(alert['message']))
+    value = html.escape(str(alert['value']))
+
+    subject = f"[RISK ALERT] {rule_id} - value {value}"
     body = (
         "<html><body>"
-        f"<h2>Risk Alert: {alert['rule_id']}</h2>"
-        f"<p>{alert['message']}</p>"
-        f"<p><strong>Current Value:</strong> {alert['value']}</p>"
+        f"<h2>Risk Alert: {rule_id}</h2>"
+        f"<p>{message}</p>"
+        f"<p><strong>Current Value:</strong> {value}</p>"
         "</body></html>"
     )
     return subject, body
@@ -69,9 +74,9 @@ def send_email(alert: dict, config: dict) -> bool:
             logger.info("Email sent for alert %s", alert["rule_id"])
             return True
         logger.warning(
-            "Email send failed for %s: HTTP %d",
-            alert["rule_id"],
+            "SendGrid returned %d: %s",
             resp.status_code,
+            resp.text[:500],
         )
         return False
     except requests.RequestException:

@@ -5,10 +5,13 @@ Runs domain index computation, scoring, and alert evaluation on a repeating sche
 
 import logging
 import os
+import signal
 import sys
-import time
+import threading
 
-from alerting.dispatch import dispatch_alert
+import psycopg2
+
+from alerting.dispatch import dispatch_alert, update_delivery_status
 from alerting.rules_engine import evaluate_rules, load_alert_config
 from correlator import compute_correlations
 from index_builder import compute_domain_indices
@@ -20,6 +23,14 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
 logger = logging.getLogger("correlation")
+
+
+shutdown_event = threading.Event()
+
+
+def _handle_shutdown(signum, frame):
+    logger.info("Received signal %d, shutting down gracefully", signum)
+    shutdown_event.set()
 
 
 def main() -> None:
@@ -35,7 +46,10 @@ def main() -> None:
     alert_config = load_alert_config(alert_config_path)
     logger.info("Starting correlation service, interval=%ds", interval)
 
-    while True:
+    signal.signal(signal.SIGTERM, _handle_shutdown)
+    signal.signal(signal.SIGINT, _handle_shutdown)
+
+    while not shutdown_event.is_set():
         try:
             compute_domain_indices(db_url)
         except Exception:
@@ -69,13 +83,22 @@ def main() -> None:
                         results = dispatch_alert(alert, channels_config)
                         logger.info("Dispatched alert %s: %s",
                                     alert["rule_id"], results)
+                        conn = psycopg2.connect(db_url)
+                        try:
+                            update_delivery_status(
+                                conn,
+                                rule_id=alert["rule_id"],
+                                channel_results=results,
+                            )
+                        finally:
+                            conn.close()
                     except Exception:
                         logger.exception("Dispatch failed for alert %s",
                                          alert["rule_id"])
         except Exception:
             logger.exception("Alert evaluation failed")
 
-        time.sleep(interval)
+        shutdown_event.wait(timeout=interval)
 
 
 if __name__ == "__main__":

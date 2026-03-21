@@ -24,7 +24,7 @@ export async function GET(request: Request): Promise<Response> {
 
     return NextResponse.json({ alerts: rows });
   } catch (err) {
-    console.error("Failed to fetch alerts:", err);
+    console.error("[/api/risk/alerts]", err);
     return NextResponse.json(
       { error: "Failed to fetch alerts" },
       { status: 500 },
@@ -63,7 +63,7 @@ export async function POST(request: Request): Promise<Response> {
 
     return NextResponse.json({ alert: rows[0] });
   } catch (err) {
-    console.error("Failed to acknowledge alert:", err);
+    console.error("[/api/risk/alerts]", err);
     return NextResponse.json(
       { error: "Failed to acknowledge alert" },
       { status: 500 },

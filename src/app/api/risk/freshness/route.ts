@@ -35,7 +35,7 @@ export async function GET(): Promise<Response> {
 
     return NextResponse.json({ tickers });
   } catch (err) {
-    console.error("Freshness query failed:", err);
+    console.error("[/api/risk/freshness]", err);
     return NextResponse.json(
       { error: "Failed to query freshness data" },
       { status: 500 },

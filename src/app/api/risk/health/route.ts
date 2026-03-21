@@ -46,7 +46,7 @@ export async function GET(): Promise<Response> {
 
     return NextResponse.json({ sources });
   } catch (err) {
-    console.error("health query failed:", err);
+    console.error("[/api/risk/health]", err);
     return NextResponse.json(
       { error: "Failed to query source health" },
       { status: 500 },

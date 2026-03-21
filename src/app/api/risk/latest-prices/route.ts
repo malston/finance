@@ -28,7 +28,7 @@ export async function GET(): Promise<Response> {
     const rows = await queryLatestPrices(DISPLAY_TICKERS);
     return NextResponse.json(rows);
   } catch (err) {
-    console.error("latest-prices query failed:", err);
+    console.error("[/api/risk/latest-prices]", err);
     return NextResponse.json(
       { error: "Failed to query latest prices" },
       { status: 500 },

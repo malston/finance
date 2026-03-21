@@ -70,9 +70,9 @@ def send_slack(alert: dict, config: dict) -> bool:
             logger.info("Slack alert sent for %s", alert["rule_id"])
             return True
         logger.warning(
-            "Slack send failed for %s: HTTP %d",
-            alert["rule_id"],
+            "Slack webhook returned %d: %s",
             resp.status_code,
+            resp.text[:500],
         )
         return False
     except requests.RequestException:

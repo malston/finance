@@ -25,7 +25,7 @@ export async function GET(request: Request): Promise<Response> {
     const rows = await queryNewsSentiment(domain, limit);
     return NextResponse.json(rows);
   } catch (err) {
-    console.error("News sentiment query failed:", err);
+    console.error("[/api/risk/news]", err);
     return NextResponse.json(
       { error: "Failed to query news sentiment" },
       { status: 500 },

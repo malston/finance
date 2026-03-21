@@ -244,8 +244,8 @@ class TestDispatchAlert:
         result = dispatch_alert(sample_alert, channels_config)
         assert result["email"] is True
         assert result["slack"] is True
-        # browser_push is disabled in config
-        assert result["browser_push"] is False
+        # browser_push is disabled in config (None = disabled, distinct from False = failed)
+        assert result["browser_push"] is None
 
     @responses.activate
     def test_channel_failure_does_not_block_others(self, sample_alert, channels_config):

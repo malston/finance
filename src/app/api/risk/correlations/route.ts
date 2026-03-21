@@ -84,7 +84,7 @@ export async function GET(request: Request): Promise<Response> {
 
     return NextResponse.json(grouped);
   } catch (err) {
-    console.error("Correlation query failed:", err);
+    console.error("[/api/risk/correlations]", err);
     return NextResponse.json(
       { error: "Failed to query correlation data" },
       { status: 500 },

@@ -71,7 +71,7 @@ export async function GET(_request: Request): Promise<Response> {
       updated_at: updatedAt,
     });
   } catch (err) {
-    console.error("Failed to fetch risk scores:", err);
+    console.error("[/api/risk/scores]", err);
     return NextResponse.json(
       { error: "Failed to fetch risk scores" },
       { status: 500 },
