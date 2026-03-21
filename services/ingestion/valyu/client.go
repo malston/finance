@@ -142,6 +142,6 @@ func (c *Client) SearchNews(ctx context.Context, domain string) ([]SearchResult,
 
 // SearchInsiderTrades searches Valyu for SEC Form 4 insider transaction filings.
 func (c *Client) SearchInsiderTrades(ctx context.Context, ticker string) ([]SearchResult, error) {
-	query := fmt.Sprintf("%s SEC Form 4 insider trading transaction buy sell", ticker)
-	return c.search(ctx, query, 10)
+	query := fmt.Sprintf("%s insider trading SEC Form 4", ticker)
+	return c.search(ctx, query, 5)
 }
