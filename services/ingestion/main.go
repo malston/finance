@@ -123,8 +123,12 @@ func main() {
 	}
 
 	// Fetch FRED immediately on startup
-	if err := scheduler.FetchOnce(ctx, fredClient, tsStore, cfg.Fred.Series, lookbackDays); err != nil {
-		slog.Warn("initial FRED fetch failed", "error", err)
+	fredErr := scheduler.FetchOnce(ctx, fredClient, tsStore, cfg.Fred.Series, lookbackDays)
+	if fredErr != nil {
+		slog.Warn("initial FRED fetch failed", "error", fredErr)
+	}
+	if hErr := tsStore.UpdateSourceHealth(ctx, "fred", fredErr); hErr != nil {
+		slog.Warn("updating fred health", "error", hErr)
 	}
 
 	// Fetch Finnhub immediately on startup
@@ -144,8 +148,12 @@ func main() {
 			slog.Info("ingestion service stopped")
 			return
 		case <-fredTicker.C:
-			if err := scheduler.FetchOnce(ctx, fredClient, tsStore, cfg.Fred.Series, lookbackDays); err != nil {
-				slog.Warn("periodic FRED fetch failed", "error", err)
+			fredErr := scheduler.FetchOnce(ctx, fredClient, tsStore, cfg.Fred.Series, lookbackDays)
+			if fredErr != nil {
+				slog.Warn("periodic FRED fetch failed", "error", fredErr)
+			}
+			if hErr := tsStore.UpdateSourceHealth(ctx, "fred", fredErr); hErr != nil {
+				slog.Warn("updating fred health", "error", hErr)
 			}
 		case <-finnhubTicker.C:
 			if len(cfg.Finnhub.RESTTickers) > 0 && cfg.Finnhub.APIKey != "" {
@@ -156,9 +164,12 @@ func main() {
 }
 
 func fetchFinnhub(ctx context.Context, client *finnhub.Client, tsStore *store.Store, cfg *config.Config) {
-	points, err := client.FetchQuotes(ctx, cfg.Finnhub.RESTTickers, cfg.Finnhub.RateLimitDelay)
-	if err != nil {
-		slog.Warn("Finnhub fetch failed", "error", err)
+	points, fetchErr := client.FetchQuotes(ctx, cfg.Finnhub.RESTTickers, cfg.Finnhub.RateLimitDelay)
+	if fetchErr != nil {
+		slog.Warn("Finnhub fetch failed", "error", fetchErr)
+		if hErr := tsStore.UpdateSourceHealth(ctx, "finnhub", fetchErr); hErr != nil {
+			slog.Warn("updating finnhub health", "error", hErr)
+		}
 		return
 	}
 
@@ -168,6 +179,10 @@ func fetchFinnhub(ctx context.Context, client *finnhub.Client, tsStore *store.St
 		} else {
 			slog.Info("wrote Finnhub quotes", "count", len(points))
 		}
+	}
+
+	if hErr := tsStore.UpdateSourceHealth(ctx, "finnhub", nil); hErr != nil {
+		slog.Warn("updating finnhub health", "error", hErr)
 	}
 
 	// Compute SPY/RSP ratio if both tickers were fetched

@@ -7,6 +7,14 @@ export interface TimeSeriesRow {
   source: string;
 }
 
+export interface SourceHealthRow {
+  source: string;
+  last_success: string | null;
+  last_error: string | null;
+  last_error_msg: string | null;
+  consecutive_failures: number;
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -91,5 +99,19 @@ export async function queryLatestPrices(
   `;
 
   const result = await pool.query(sql, [tickers]);
+  return result.rows;
+}
+
+/**
+ * Returns health status for all tracked data sources.
+ */
+export async function querySourceHealth(): Promise<SourceHealthRow[]> {
+  const sql = `
+    SELECT source, last_success, last_error, last_error_msg, consecutive_failures
+    FROM source_health
+    ORDER BY source
+  `;
+
+  const result = await pool.query(sql, []);
   return result.rows;
 }
