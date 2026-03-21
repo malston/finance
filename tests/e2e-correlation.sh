@@ -281,7 +281,7 @@ echo "PASS: All API correlation values are in [-1, 1]"
 # Assert: max_current field exists and has required shape
 MAX_PAIR=$(echo "${API_RESPONSE}" | jq -r '.max_current.pair')
 MAX_VALUE=$(echo "${API_RESPONSE}" | jq '.max_current.value')
-HAS_THRESHOLD=$(echo "${API_RESPONSE}" | jq 'has("max_current") and (.max_current | has("pair", "value", "above_threshold"))')
+HAS_THRESHOLD=$(echo "${API_RESPONSE}" | jq 'has("max_current") and (.max_current | has("pair") and has("value") and has("above_threshold"))')
 
 if [ "${HAS_THRESHOLD}" != "true" ]; then
     echo "FAIL: max_current missing required fields (pair, value, above_threshold)" >&2

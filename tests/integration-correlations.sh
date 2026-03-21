@@ -154,7 +154,7 @@ echo "PASS: All 3 correlation pairs have data"
 
 # Assert: Each entry has time and value fields
 for key in credit_tech credit_energy tech_energy; do
-    HAS_FIELDS=$(echo "${API_RESPONSE}" | jq --arg k "${key}" '.[$k][0] | has("time", "value")')
+    HAS_FIELDS=$(echo "${API_RESPONSE}" | jq --arg k "${key}" '.[$k][0] | has("time") and has("value")')
     if [ "${HAS_FIELDS}" != "true" ]; then
         echo "FAIL: ${key} entries missing required fields (time, value)" >&2
         exit 1

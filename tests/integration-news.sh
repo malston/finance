@@ -123,7 +123,7 @@ fi
 echo "PASS: API returned ${ARRAY_LENGTH} row(s)"
 
 # Verify response rows have expected fields: headline, sentiment, domain
-SHAPE_CHECK=$(echo "${API_RESPONSE}" | jq '.[0] | has("headline", "sentiment", "domain")')
+SHAPE_CHECK=$(echo "${API_RESPONSE}" | jq '.[0] | has("headline") and has("sentiment") and has("domain")')
 if [ "${SHAPE_CHECK}" != "true" ]; then
     echo "FAIL: Response rows missing required fields (headline, sentiment, domain)" >&2
     echo "First row: $(echo "${API_RESPONSE}" | jq '.[0]')" >&2

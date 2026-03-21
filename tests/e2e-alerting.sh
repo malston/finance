@@ -245,9 +245,16 @@ source "${E2E_VENV}/bin/activate"
 pip install -q psycopg2-binary pyyaml requests 2>/dev/null
 
 # Run evaluate_rules 3 times to build consecutive count for composite_critical.
+# Insert a new SCORE_COMPOSITE reading before each iteration so the value changes
+# (the rules engine only increments consecutive_count when the value differs).
 # The vix_spike rule only needs 1 consecutive reading, so it fires on the first call.
+COMPOSITE_VALUES=(78.5 82.1 80.0)
 for iter in 1 2 3; do
-    echo "  Evaluation iteration ${iter}..."
+    COMP_VAL="${COMPOSITE_VALUES[$((iter-1))]}"
+    psql -h localhost -U "${DB_USER}" -d "${DB_NAME}" -c \
+        "INSERT INTO time_series (time, ticker, value, source) VALUES (NOW(), 'SCORE_COMPOSITE', ${COMP_VAL}, 'e2e-test') ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value;" >/dev/null 2>&1
+    sleep 1
+    echo "  Evaluation iteration ${iter} (SCORE_COMPOSITE=${COMP_VAL})..."
     python3 -c "
 import sys
 sys.path.insert(0, '${CORRELATION_DIR}')
@@ -351,8 +358,14 @@ psql_cmd -c "
 UPDATE alert_state SET consecutive_count = 0 WHERE rule_id = 'composite_critical';
 " >/dev/null
 
-# Scores are still above threshold, so evaluating 3 more times should fire again
+# Insert new readings with different values so consecutive_count increments
+RETRIGGER_VALUES=(79.0 83.0 81.5)
 for iter in 1 2 3; do
+    COMP_VAL="${RETRIGGER_VALUES[$((iter-1))]}"
+    psql_cmd -c "INSERT INTO time_series (time, ticker, value, source) VALUES (NOW(), 'SCORE_COMPOSITE', ${COMP_VAL}, 'e2e-test') ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value;" >/dev/null
+    # Also insert a new VIX reading so vix_spike re-triggers
+    psql_cmd -c "INSERT INTO time_series (time, ticker, value, source) VALUES (NOW(), 'VIX', 36.${iter}, 'e2e-test') ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value;" >/dev/null
+    sleep 1
     python3 -c "
 import sys
 sys.path.insert(0, '${CORRELATION_DIR}')
