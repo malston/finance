@@ -73,19 +73,20 @@ def compute_index_returns(price_df: pd.DataFrame, tickers: list[str]) -> pd.Seri
 def _fetch_constituent_prices(
     conn: psycopg2.extensions.connection,
     tickers: list[str],
+    lookback_days: int = 60,
 ) -> list[dict[str, Any]]:
     """Fetch recent price history for the given tickers from time_series.
 
-    Only fetches the last 60 days of data, which provides enough for a
+    Only fetches the last `lookback_days` of data, which provides enough for a
     30-day rolling window plus buffer.
     """
     with conn.cursor() as cur:
         cur.execute(
             "SELECT time, ticker, value FROM time_series "
             "WHERE ticker = ANY(%s) "
-            "AND time >= NOW() - INTERVAL '60 days' "
+            "AND time >= NOW() - make_interval(days => %s) "
             "ORDER BY time ASC",
-            (tickers,),
+            (tickers, lookback_days),
         )
         columns = [desc[0] for desc in cur.description]
         return [dict(zip(columns, row)) for row in cur.fetchall()]
@@ -122,7 +123,7 @@ def _store_index_values(
     return len(values)
 
 
-def compute_domain_indices(db_url: str) -> None:
+def compute_domain_indices(db_url: str, lookback_days: int = 60) -> None:
     """Compute and store all domain indices.
 
     Connects to TimescaleDB, reads constituent prices, computes daily return
@@ -131,7 +132,7 @@ def compute_domain_indices(db_url: str) -> None:
     conn = psycopg2.connect(db_url)
     try:
         for index_ticker, constituents in INDEX_DEFINITIONS.items():
-            rows = _fetch_constituent_prices(conn, constituents)
+            rows = _fetch_constituent_prices(conn, constituents, lookback_days)
             if not rows:
                 logger.warning(
                     "No price data found for %s constituents: %s",

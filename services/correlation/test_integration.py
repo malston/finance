@@ -97,7 +97,7 @@ class TestIntegrationComputeDomainIndices:
 
     def test_computes_and_stores_all_three_indices(self, db_conn, db_url, seed_prices):
         """After running compute_domain_indices, all three index tickers exist in time_series."""
-        compute_domain_indices(db_url)
+        compute_domain_indices(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             for index_ticker in INDEX_DEFINITIONS:
@@ -110,7 +110,7 @@ class TestIntegrationComputeDomainIndices:
 
     def test_private_credit_index_values_correct(self, db_conn, db_url, seed_prices):
         """Verify IDX_PRIVATE_CREDIT values match manual calculation."""
-        compute_domain_indices(db_url)
+        compute_domain_indices(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             cur.execute(
@@ -141,7 +141,7 @@ class TestIntegrationComputeDomainIndices:
 
     def test_ai_tech_index_values_correct(self, db_conn, db_url, seed_prices):
         """Verify IDX_AI_TECH values match manual calculation."""
-        compute_domain_indices(db_url)
+        compute_domain_indices(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             cur.execute(
@@ -170,7 +170,7 @@ class TestIntegrationComputeDomainIndices:
 
     def test_energy_index_values_correct(self, db_conn, db_url, seed_prices):
         """Verify IDX_ENERGY is just CL=F daily returns."""
-        compute_domain_indices(db_url)
+        compute_domain_indices(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             cur.execute(
@@ -221,7 +221,7 @@ class TestIntegrationComputeDomainIndices:
                     (ts, "ARCC", arcc_price),
                 )
 
-        compute_domain_indices(db_url)
+        compute_domain_indices(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             cur.execute(
@@ -238,8 +238,8 @@ class TestIntegrationComputeDomainIndices:
 
     def test_idempotent_rerun(self, db_conn, db_url, seed_prices):
         """Running compute twice does not duplicate rows (upsert semantics)."""
-        compute_domain_indices(db_url)
-        compute_domain_indices(db_url)
+        compute_domain_indices(db_url, lookback_days=36500)
+        compute_domain_indices(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             for index_ticker in INDEX_DEFINITIONS:
@@ -253,7 +253,7 @@ class TestIntegrationComputeDomainIndices:
 
     def test_api_can_query_computed_indices(self, db_conn, db_url, seed_prices):
         """Computed index data is queryable via the same time_series table the API uses."""
-        compute_domain_indices(db_url)
+        compute_domain_indices(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             # Simulate what the /api/risk/timeseries endpoint does

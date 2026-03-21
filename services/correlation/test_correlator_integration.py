@@ -98,7 +98,7 @@ class TestIntegrationComputeCorrelations:
     def test_computes_and_stores_all_three_correlation_pairs(self, db_conn, db_url):
         """After running compute_correlations, all three CORR_ tickers exist."""
         _seed_index_values(db_conn, n_days=40)
-        compute_correlations(db_url)
+        compute_correlations(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             for corr_ticker in CORR_TICKERS:
@@ -113,7 +113,7 @@ class TestIntegrationComputeCorrelations:
     def test_correlation_values_match_numpy(self, db_conn, db_url):
         """Stored correlation at the last date matches numpy.corrcoef for the same 30-day window."""
         index_values = _seed_index_values(db_conn, n_days=40)
-        compute_correlations(db_url)
+        compute_correlations(db_url, lookback_days=36500)
 
         base = datetime(2025, 6, 1, 16, 0, 0, tzinfo=timezone.utc)
 
@@ -142,7 +142,7 @@ class TestIntegrationComputeCorrelations:
     def test_correlation_values_bounded(self, db_conn, db_url):
         """All stored correlation values are between -1.0 and 1.0."""
         _seed_index_values(db_conn, n_days=40)
-        compute_correlations(db_url)
+        compute_correlations(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             cur.execute(
@@ -161,7 +161,7 @@ class TestIntegrationComputeCorrelations:
     def test_nan_not_stored(self, db_conn, db_url):
         """NaN correlation values are not written to the database."""
         _seed_index_values(db_conn, n_days=40)
-        compute_correlations(db_url)
+        compute_correlations(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             cur.execute(
@@ -179,7 +179,7 @@ class TestIntegrationComputeCorrelations:
     def test_insufficient_data_produces_no_rows(self, db_conn, db_url):
         """With only 20 days of index data (< 30 window), no correlation rows are written."""
         _seed_index_values(db_conn, n_days=20)
-        compute_correlations(db_url)
+        compute_correlations(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             cur.execute(
@@ -194,7 +194,7 @@ class TestIntegrationComputeCorrelations:
     def test_exactly_30_days_produces_one_correlation_per_pair(self, db_conn, db_url):
         """With exactly 30 days of data, one correlation value per pair."""
         _seed_index_values(db_conn, n_days=30)
-        compute_correlations(db_url)
+        compute_correlations(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             for corr_ticker in CORR_TICKERS:
@@ -211,7 +211,7 @@ class TestIntegrationComputeCorrelations:
     def test_40_days_produces_11_correlations_per_pair(self, db_conn, db_url):
         """With 40 days of data, rolling window produces 11 valid correlations (40 - 30 + 1)."""
         _seed_index_values(db_conn, n_days=40)
-        compute_correlations(db_url)
+        compute_correlations(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             for corr_ticker in CORR_TICKERS:
@@ -228,8 +228,8 @@ class TestIntegrationComputeCorrelations:
     def test_idempotent_rerun(self, db_conn, db_url):
         """Running compute_correlations twice does not duplicate rows."""
         _seed_index_values(db_conn, n_days=40)
-        compute_correlations(db_url)
-        compute_correlations(db_url)
+        compute_correlations(db_url, lookback_days=36500)
+        compute_correlations(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             for corr_ticker in CORR_TICKERS:
@@ -246,7 +246,7 @@ class TestIntegrationComputeCorrelations:
     def test_api_can_query_correlation_series(self, db_conn, db_url):
         """Correlation data is queryable via the same time_series table the API uses."""
         _seed_index_values(db_conn, n_days=40)
-        compute_correlations(db_url)
+        compute_correlations(db_url, lookback_days=36500)
 
         with db_conn.cursor() as cur:
             cur.execute(

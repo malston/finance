@@ -1,4 +1,71 @@
 scoring:
+  private_credit:
+    weight: 0.30
+    components:
+      hy_spread:
+        sub_weight: 0.35
+        ticker: BAMLH0A0HYM2
+        min_value: 300
+        max_value: 800
+      bdc_discount:
+        sub_weight: 0.25
+        ticker: BDC_AVG_NAV_DISCOUNT
+        min_value: 0
+        max_value: -0.20
+      redemption_flow:
+        sub_weight: 0.15
+        ticker: BDC_VOLUME_PROXY
+        min_value: 1.0
+        max_value: 3.0
+      spread_roc:
+        sub_weight: 0.25
+        ticker: BAMLH0A0HYM2
+        min_value: 0
+        max_value: 200
+        lookback_days: 30
+
+  ai_concentration:
+    weight: 0.20
+    components:
+      spy_rsp_deviation:
+        sub_weight: 0.40
+        ticker: SPY_RSP_RATIO
+        sma_days: 200
+        min_deviation: 0
+        max_deviation: 0.15
+      smh_relative:
+        sub_weight: 0.30
+        ticker_a: SMH
+        ticker_b: SPY
+        min_value: 0
+        max_value: 0.20
+      top10_weight:
+        sub_weight: 0.30
+        ticker: SPY_RSP_RATIO
+        min_value: 1.5
+        max_value: 2.5
+
+  energy_geo:
+    weight: 0.25
+    components:
+      crude_level:
+        sub_weight: 0.30
+        ticker: "CL=F"
+        min_value: 50
+        max_value: 120
+      crude_volatility:
+        sub_weight: 0.35
+        ticker: "CL=F"
+        lookback_days: 30
+        min_value: 0.15
+        max_value: 0.50
+      ewt_drawdown:
+        sub_weight: 0.35
+        ticker: EWT
+        lookback_days: 252
+        min_value: 0
+        max_value: -0.25
+
   contagion:
     weight: 0.25
     components:

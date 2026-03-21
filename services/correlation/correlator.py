@@ -54,19 +54,20 @@ def compute_pairwise_correlations(
 def _fetch_index_series(
     conn: psycopg2.extensions.connection,
     ticker: str,
+    lookback_days: int = 60,
 ) -> pd.Series:
     """Fetch recent values for a given index ticker from time_series, ordered by time.
 
-    Only fetches the last 60 days of data, which provides enough for a
+    Only fetches the last `lookback_days` of data, which provides enough for a
     30-day rolling window plus buffer.
     """
     with conn.cursor() as cur:
         cur.execute(
             "SELECT time, value FROM time_series "
             "WHERE ticker = %s AND source = 'computed' "
-            "AND time >= NOW() - INTERVAL '60 days' "
+            "AND time >= NOW() - make_interval(days => %s) "
             "ORDER BY time ASC",
-            (ticker,),
+            (ticker, lookback_days),
         )
         rows = cur.fetchall()
 
@@ -109,7 +110,7 @@ def _store_correlation_values(
     return len(values)
 
 
-def compute_correlations(db_url: str) -> None:
+def compute_correlations(db_url: str, lookback_days: int = 60) -> None:
     """Compute and store rolling 30-day Pearson correlations for all index pairs.
 
     Connects to TimescaleDB, reads domain index values, computes pairwise
@@ -125,7 +126,7 @@ def compute_correlations(db_url: str) -> None:
             all_index_tickers.add(idx_b)
 
         for ticker in all_index_tickers:
-            index_series[ticker] = _fetch_index_series(conn, ticker)
+            index_series[ticker] = _fetch_index_series(conn, ticker, lookback_days)
             if index_series[ticker].empty:
                 logger.warning("No data found for index %s", ticker)
 
