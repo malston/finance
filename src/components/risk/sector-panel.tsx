@@ -14,6 +14,7 @@ import { C } from "@/lib/theme";
 import type { DomainConfig } from "@/lib/domain-config";
 import { ThreatGauge } from "./threat-gauge";
 import { TickerRow } from "./ticker-row";
+import { annotateText } from "./jargon-tooltip";
 
 interface ScoresResponse {
   composite: {
@@ -136,7 +137,7 @@ export function SectorPanel({
                 marginTop: 1,
               }}
             >
-              {domain.description}
+              {annotateText(domain.description)}
             </div>
           </div>
         </div>

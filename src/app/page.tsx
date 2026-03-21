@@ -6,6 +6,8 @@ import { HYCreditSpreadCard } from "@/components/hy-credit-card";
 import { TreasuryCreditCard } from "@/components/treasury-credit-card";
 import { EquityEtfCard } from "@/components/equity-etf-card";
 import { SectorPanels } from "@/components/risk/sector-panels";
+import { ThreatLegend } from "@/components/risk/threat-legend";
+import { JargonTooltip } from "@/components/risk/jargon-tooltip";
 
 function HeaderClock() {
   const [time, setTime] = useState(new Date());
@@ -166,8 +168,13 @@ export default function DashboardPage() {
             Cross-Domain Correlation Monitor
           </div>
           <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>
-            BDC ↔ Big Tech 30-day rolling correlation — above 0.5 signals
-            contagion
+            <JargonTooltip term="BDC">BDC</JargonTooltip> ↔ Big Tech 30-day
+            rolling{" "}
+            <JargonTooltip term="Pearson Correlation">
+              correlation
+            </JargonTooltip>{" "}
+            — above 0.5 signals{" "}
+            <JargonTooltip term="Contagion">contagion</JargonTooltip>
           </div>
         </div>
 
@@ -187,45 +194,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Legend */}
-        <div
-          style={{
-            display: "flex",
-            gap: 20,
-            justifyContent: "center",
-            padding: "8px 0",
-            flexWrap: "wrap",
-          }}
-        >
-          {[
-            { color: C.green, label: "LOW (0–25)" },
-            { color: C.yellow, label: "ELEVATED (26–50)" },
-            { color: C.orange, label: "HIGH (51–75)" },
-            { color: C.red, label: "CRITICAL (76–100)" },
-          ].map((l) => (
-            <div
-              key={l.label}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 10,
-                color: C.textDim,
-                fontFamily: "var(--font-mono)",
-              }}
-            >
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: l.color,
-                  boxShadow: `0 0 4px ${l.color}60`,
-                }}
-              />
-              {l.label}
-            </div>
-          ))}
-        </div>
+        <ThreatLegend />
       </div>
     </div>
   );

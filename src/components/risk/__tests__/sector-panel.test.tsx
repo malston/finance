@@ -114,7 +114,12 @@ describe("SectorPanel", () => {
     });
 
     expect(
-      screen.getByText("BDC discounts, HY spreads, redemption pressure"),
+      screen.getByText((content, element) => {
+        return (
+          element?.textContent ===
+          "BDC discounts, HY spreads, redemption pressure"
+        );
+      }),
     ).toBeInTheDocument();
   });
 
