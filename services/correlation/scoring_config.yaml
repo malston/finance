@@ -1,0 +1,20 @@
+scoring:
+  contagion:
+    weight: 0.25
+    components:
+      max_correlation:
+        sub_weight: 0.40
+        min_value: 0.1
+        max_value: 0.7
+      vix_level:
+        sub_weight: 0.25
+        ticker: VIX
+        min_value: 15
+        max_value: 40
+      move_level:
+        sub_weight: 0.20
+        ticker: MOVE
+        min_value: 80
+        max_value: 160
+      vix_move_comovement:
+        sub_weight: 0.15
