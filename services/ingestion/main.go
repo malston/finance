@@ -91,7 +91,7 @@ func main() {
 
 	valyuBaseURL := os.Getenv("VALYU_BASE_URL")
 	if valyuBaseURL == "" {
-		valyuBaseURL = "https://api.valyu.network"
+		valyuBaseURL = "https://api.valyu.ai"
 	}
 
 	valyuClient := valyu.NewClient(valyu.Config{

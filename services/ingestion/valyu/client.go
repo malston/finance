@@ -64,7 +64,7 @@ func (c *Client) search(ctx context.Context, query string, maxResults int) ([]Se
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.config.APIKey)
+	req.Header.Set("x-api-key", c.config.APIKey)
 
 	resp, err := c.http.Do(req)
 	if err != nil {

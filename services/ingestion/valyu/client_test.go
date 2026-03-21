@@ -17,8 +17,8 @@ func TestSearchFilings_ParsesResponse(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
-		if r.Header.Get("Authorization") != "Bearer test-key" {
-			t.Errorf("expected Bearer test-key, got %q", r.Header.Get("Authorization"))
+		if r.Header.Get("x-api-key") != "test-key" {
+			t.Errorf("expected x-api-key test-key, got %q", r.Header.Get("x-api-key"))
 		}
 
 		var body map[string]interface{}
