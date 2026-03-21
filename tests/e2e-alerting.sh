@@ -251,8 +251,7 @@ pip install -q psycopg2-binary pyyaml requests 2>/dev/null
 COMPOSITE_VALUES=(78.5 82.1 80.0)
 for iter in 1 2 3; do
     COMP_VAL="${COMPOSITE_VALUES[$((iter-1))]}"
-    psql -h localhost -U "${DB_USER}" -d "${DB_NAME}" -c \
-        "INSERT INTO time_series (time, ticker, value, source) VALUES (NOW(), 'SCORE_COMPOSITE', ${COMP_VAL}, 'e2e-test') ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value;" >/dev/null 2>&1
+    psql_cmd -c "INSERT INTO time_series (time, ticker, value, source) VALUES (NOW(), 'SCORE_COMPOSITE', ${COMP_VAL}, 'e2e-test') ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value;" >/dev/null
     sleep 1
     echo "  Evaluation iteration ${iter} (SCORE_COMPOSITE=${COMP_VAL})..."
     python3 -c "
