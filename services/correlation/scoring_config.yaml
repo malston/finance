@@ -17,6 +17,7 @@ scoring:
         ticker: BDC_VOLUME_PROXY
         min_value: 1.0
         max_value: 3.0
+        placeholder: 50
       spread_roc:
         sub_weight: 0.25
         ticker: BAMLH0A0HYM2

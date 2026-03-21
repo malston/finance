@@ -107,8 +107,8 @@ def score_private_credit(db_url: str, config: dict[str, Any]) -> float:
             )
 
         # Redemption flow proxy (placeholder until volume data available)
-        rf_config = components["redemption_flow"]
-        sub_scores["redemption_flow"] = rf_config["placeholder"]
+        rf_config = components.get("redemption_flow", {})
+        sub_scores["redemption_flow"] = rf_config.get("placeholder", 50)
 
         # Spread rate of change
         roc_config = components["spread_roc"]
