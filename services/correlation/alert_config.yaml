@@ -1,0 +1,31 @@
+alerts:
+  rules:
+    - id: composite_critical
+      name: "Composite threat CRITICAL"
+      condition: "composite_score > 75"
+      ticker: SCORE_COMPOSITE
+      threshold: 75
+      operator: ">"
+      consecutive_readings: 3
+      cooldown: 4h
+      channels: [email, slack, browser_push]
+
+    - id: vix_spike
+      name: "VIX above 30"
+      condition: "vix > 30"
+      ticker: VIX
+      threshold: 30
+      operator: ">"
+      consecutive_readings: 1
+      cooldown: 4h
+      channels: [slack]
+
+    - id: contagion_spike
+      name: "Contagion correlation above threshold"
+      condition: "max_correlation > 0.5"
+      ticker: CORR_MAX
+      threshold: 0.5
+      operator: ">"
+      consecutive_readings: 2
+      cooldown: 4h
+      channels: [email, slack]
