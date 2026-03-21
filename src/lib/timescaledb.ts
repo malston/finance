@@ -48,6 +48,36 @@ export async function queryTimeSeries(
  * Returns the latest price for each of the given tickers.
  * One row per ticker with the most recent time, value, and source.
  */
+const CORRELATION_TICKERS = [
+  "CORR_CREDIT_TECH",
+  "CORR_CREDIT_ENERGY",
+  "CORR_TECH_ENERGY",
+];
+
+/**
+ * Queries all three pairwise correlation time series for the specified number of trading days.
+ */
+export async function queryCorrelations(
+  days: number = 79,
+): Promise<TimeSeriesRow[]> {
+  const effectiveDays = Math.max(days, 1);
+
+  const sql = `
+    SELECT time, ticker, value, source
+    FROM time_series
+    WHERE ticker = ANY($1)
+      AND time >= NOW() - ($2 || ' days')::INTERVAL
+    ORDER BY time ASC
+  `;
+
+  const result = await pool.query(sql, [CORRELATION_TICKERS, effectiveDays]);
+  return result.rows;
+}
+
+/**
+ * Returns the latest price for each of the given tickers.
+ * One row per ticker with the most recent time, value, and source.
+ */
 export async function queryLatestPrices(
   tickers: string[],
 ): Promise<TimeSeriesRow[]> {
