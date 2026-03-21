@@ -11,7 +11,12 @@ vi.mock("pg", () => ({
   },
 }));
 
-import { query, queryTimeSeries, type TimeSeriesRow } from "@/lib/timescaledb";
+import {
+  query,
+  queryTimeSeries,
+  queryCorrelations,
+  type TimeSeriesRow,
+} from "@/lib/timescaledb";
 
 describe("query", () => {
   beforeEach(() => {
@@ -123,5 +128,88 @@ describe("queryTimeSeries", () => {
     const result = await queryTimeSeries("NONEXISTENT", 30);
 
     expect(result).toEqual([]);
+  });
+});
+
+describe("queryCorrelations", () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+  });
+
+  it("queries all three correlation tickers", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    await queryCorrelations(79);
+
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(params[0]).toEqual([
+      "CORR_CREDIT_TECH",
+      "CORR_CREDIT_ENERGY",
+      "CORR_TECH_ENERGY",
+    ]);
+  });
+
+  it("filters by days parameter using interval", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    await queryCorrelations(30);
+
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(params[1]).toBe(30);
+  });
+
+  it("orders results by time ascending", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    await queryCorrelations(79);
+
+    const [sql] = mockQuery.mock.calls[0];
+    expect(sql).toMatch(/ORDER BY.*time.*ASC/i);
+  });
+
+  it("returns rows from the database", async () => {
+    const fakeRows: TimeSeriesRow[] = [
+      {
+        time: "2026-01-15T00:00:00Z",
+        ticker: "CORR_CREDIT_TECH",
+        value: 0.42,
+        source: "computed",
+      },
+      {
+        time: "2026-01-15T00:00:00Z",
+        ticker: "CORR_CREDIT_ENERGY",
+        value: 0.31,
+        source: "computed",
+      },
+    ];
+    mockQuery.mockResolvedValueOnce({ rows: fakeRows });
+
+    const result = await queryCorrelations(79);
+
+    expect(result).toEqual(fakeRows);
+  });
+
+  it("returns empty array when no correlation data exists", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const result = await queryCorrelations(79);
+
+    expect(result).toEqual([]);
+  });
+
+  it("clamps days to minimum of 1", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    await queryCorrelations(0);
+
+    const [, params] = mockQuery.mock.calls[0];
+    expect(params[1]).toBe(1);
+  });
+
+  it("propagates database errors", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("connection refused"));
+
+    await expect(queryCorrelations(79)).rejects.toThrow("connection refused");
   });
 });
