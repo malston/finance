@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
+import { QueryProvider } from "@/components/query-provider";
 import "./globals.css";
 
 const ibmPlexSans = IBM_Plex_Sans({
@@ -31,7 +32,7 @@ export default function RootLayout({
         className={`${ibmPlexSans.variable} ${jetbrainsMono.variable} antialiased`}
         style={{ fontFamily: "var(--font-sans), sans-serif" }}
       >
-        {children}
+        <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
   );
