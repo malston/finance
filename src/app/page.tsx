@@ -183,7 +183,12 @@ export default function DashboardPage() {
           </div>
 
           {/* Sector Panels */}
-          <SectorPanels />
+          <div data-testid="section-sector-panels">
+            <HYCreditSpreadCard />
+            <TreasuryCreditCard />
+            <EquityEtfCard />
+            <SectorPanels />
+          </div>
 
           {/* Legend */}
           <div
