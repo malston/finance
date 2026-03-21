@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Fred    FredConfig    `yaml:"fred"`
 	Finnhub FinnhubConfig `yaml:"finnhub"`
+	Valyu   ValyuConfig   `yaml:"valyu"`
 	Health  HealthConfig  `yaml:"health"`
 }
 
@@ -41,6 +42,45 @@ type FinnhubConfig struct {
 	RateLimitDelay   time.Duration `yaml:"rate_limit_delay"`
 }
 
+// ValyuConfig holds Valyu API settings, budget limits, and schedule configuration.
+type ValyuConfig struct {
+	APIKey    string            `yaml:"api_key"`
+	Budget    ValyuBudgetConfig `yaml:"budget"`
+	Schedules ValyuSchedules    `yaml:"schedules"`
+}
+
+// ValyuBudgetConfig holds daily API call limits.
+type ValyuBudgetConfig struct {
+	DailyMaxCalls int `yaml:"daily_max_calls"`
+	WarnAtCalls   int `yaml:"warn_at_calls"`
+}
+
+// ValyuSchedules holds schedule settings for each Valyu data stream.
+type ValyuSchedules struct {
+	SECFilings     ValyuFilingsSchedule   `yaml:"sec_filings"`
+	NewsSentiment  ValyuSentimentSchedule `yaml:"news_sentiment"`
+	InsiderTrading ValyuInsiderSchedule   `yaml:"insider_trading"`
+}
+
+// ValyuFilingsSchedule holds SEC filing search schedule settings.
+type ValyuFilingsSchedule struct {
+	Interval time.Duration `yaml:"interval"`
+	BDCs     []string      `yaml:"bdcs"`
+}
+
+// ValyuSentimentSchedule holds news sentiment search schedule settings.
+type ValyuSentimentSchedule struct {
+	Interval        time.Duration `yaml:"interval"`
+	MarketHoursOnly bool          `yaml:"market_hours_only"`
+	Domains         []string      `yaml:"domains"`
+}
+
+// ValyuInsiderSchedule holds insider trading search schedule settings.
+type ValyuInsiderSchedule struct {
+	Interval time.Duration `yaml:"interval"`
+	Tickers  []string      `yaml:"tickers"`
+}
+
 // Load reads a config file from disk, expands environment variables in the
 // API key, and validates required fields.
 func Load(path string) (*Config, error) {
@@ -57,6 +97,7 @@ func Load(path string) (*Config, error) {
 	// Expand env vars in API keys
 	cfg.Fred.APIKey = os.ExpandEnv(cfg.Fred.APIKey)
 	cfg.Finnhub.APIKey = os.ExpandEnv(cfg.Finnhub.APIKey)
+	cfg.Valyu.APIKey = os.ExpandEnv(cfg.Valyu.APIKey)
 
 	// Default poll intervals
 	if cfg.Fred.PollInterval == 0 {
@@ -67,6 +108,23 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Finnhub.RateLimitDelay == 0 {
 		cfg.Finnhub.RateLimitDelay = 1 * time.Second
+	}
+
+	// Valyu defaults
+	if cfg.Valyu.Budget.DailyMaxCalls == 0 {
+		cfg.Valyu.Budget.DailyMaxCalls = 100
+	}
+	if cfg.Valyu.Budget.WarnAtCalls == 0 {
+		cfg.Valyu.Budget.WarnAtCalls = 80
+	}
+	if cfg.Valyu.Schedules.SECFilings.Interval == 0 {
+		cfg.Valyu.Schedules.SECFilings.Interval = 24 * time.Hour
+	}
+	if cfg.Valyu.Schedules.NewsSentiment.Interval == 0 {
+		cfg.Valyu.Schedules.NewsSentiment.Interval = 1 * time.Hour
+	}
+	if cfg.Valyu.Schedules.InsiderTrading.Interval == 0 {
+		cfg.Valyu.Schedules.InsiderTrading.Interval = 24 * time.Hour
 	}
 
 	if len(cfg.Fred.Series) == 0 {
