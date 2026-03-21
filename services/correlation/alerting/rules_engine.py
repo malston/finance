@@ -6,6 +6,7 @@ writes fired alerts to alert_history.
 """
 
 import logging
+import os
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -26,7 +27,9 @@ def load_alert_config(config_path: str) -> dict[str, Any]:
         Parsed config dict with 'alerts.rules' list.
     """
     with open(config_path) as f:
-        return yaml.safe_load(f)
+        raw = f.read()
+    expanded = os.path.expandvars(raw)
+    return yaml.safe_load(expanded)
 
 
 def parse_cooldown(cooldown_str: str) -> timedelta:
@@ -226,11 +229,14 @@ def evaluate_rules(
             state = _get_alert_state(conn, rule_id)
             current_count = state["consecutive_count"] if state else 0
             last_triggered = state["last_triggered"] if state else None
+            last_value = state["last_value"] if state else None
 
             condition_met = evaluate_condition(value, operator, threshold)
 
             if condition_met:
-                current_count += 1
+                # Only increment if the value has changed (a new reading)
+                if last_value is None or value != last_value:
+                    current_count += 1
             else:
                 current_count = 0
 

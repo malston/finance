@@ -55,11 +55,16 @@ def _fetch_index_series(
     conn: psycopg2.extensions.connection,
     ticker: str,
 ) -> pd.Series:
-    """Fetch all values for a given index ticker from time_series, ordered by time."""
+    """Fetch recent values for a given index ticker from time_series, ordered by time.
+
+    Only fetches the last 60 days of data, which provides enough for a
+    30-day rolling window plus buffer.
+    """
     with conn.cursor() as cur:
         cur.execute(
             "SELECT time, value FROM time_series "
             "WHERE ticker = %s AND source = 'computed' "
+            "AND time >= NOW() - INTERVAL '60 days' "
             "ORDER BY time ASC",
             (ticker,),
         )

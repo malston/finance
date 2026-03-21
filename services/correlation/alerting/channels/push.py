@@ -27,9 +27,15 @@ def _send_web_push(subscription: dict, data: str, vapid_config: dict) -> bool:
         True on success, False on failure.
     """
     try:
-        # Production: use pywebpush.webpush() here
         from pywebpush import webpush
+    except ImportError:
+        logger.warning(
+            "pywebpush not installed; browser push disabled for endpoint %s",
+            subscription.get("endpoint"),
+        )
+        return False
 
+    try:
         webpush(
             subscription_info=subscription,
             data=data,

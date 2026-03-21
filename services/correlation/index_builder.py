@@ -32,13 +32,18 @@ def compute_daily_returns(prices: pd.Series) -> pd.Series:
 def build_price_dataframe(rows: list[dict[str, Any]]) -> pd.DataFrame:
     """Build a pivoted DataFrame with dates as index and tickers as columns.
 
-    Each row dict must have 'time', 'ticker', and 'value' keys.
+    Resamples to daily frequency by taking the last price per day for each
+    ticker. Each row dict must have 'time', 'ticker', and 'value' keys.
     """
     if not rows:
         return pd.DataFrame()
 
     df = pd.DataFrame(rows)
-    pivoted = df.pivot_table(index="time", columns="ticker", values="value", aggfunc="last")
+    df["time"] = pd.to_datetime(df["time"], utc=True)
+    df["date"] = df["time"].dt.date
+    # Take the last price per day per ticker
+    daily = df.groupby(["date", "ticker"])["value"].last().reset_index()
+    pivoted = daily.pivot_table(index="date", columns="ticker", values="value", aggfunc="last")
     pivoted.sort_index(inplace=True)
     return pivoted
 
@@ -69,11 +74,16 @@ def _fetch_constituent_prices(
     conn: psycopg2.extensions.connection,
     tickers: list[str],
 ) -> list[dict[str, Any]]:
-    """Fetch price history for the given tickers from time_series."""
+    """Fetch recent price history for the given tickers from time_series.
+
+    Only fetches the last 60 days of data, which provides enough for a
+    30-day rolling window plus buffer.
+    """
     with conn.cursor() as cur:
         cur.execute(
             "SELECT time, ticker, value FROM time_series "
             "WHERE ticker = ANY(%s) "
+            "AND time >= NOW() - INTERVAL '60 days' "
             "ORDER BY time ASC",
             (tickers,),
         )

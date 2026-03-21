@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+
 CREATE TABLE IF NOT EXISTS time_series (
   time        TIMESTAMPTZ NOT NULL,
   ticker      TEXT NOT NULL,

@@ -85,9 +85,9 @@ def update_delivery_status(
     with conn.cursor() as cur:
         cur.execute(
             "UPDATE alert_history "
-            "SET delivered = %s, channels = %s "
+            "SET delivered = %s "
             "WHERE rule_id = %s "
             "AND id = (SELECT MAX(id) FROM alert_history WHERE rule_id = %s)",
-            (delivered, successful, rule_id, rule_id),
+            (delivered, rule_id, rule_id),
         )
     conn.commit()

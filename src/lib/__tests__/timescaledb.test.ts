@@ -15,6 +15,7 @@ import {
   query,
   queryTimeSeries,
   queryCorrelations,
+  queryLatestPrices,
   querySourceHealth,
   queryNewsSentiment,
   type TimeSeriesRow,
@@ -347,5 +348,70 @@ describe("queryNewsSentiment", () => {
     const result = await queryNewsSentiment("geopolitical", 10);
 
     expect(result).toEqual([]);
+  });
+});
+
+describe("queryLatestPrices", () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+  });
+
+  it("returns latest price for each ticker", async () => {
+    const fakeRows: TimeSeriesRow[] = [
+      {
+        time: "2026-03-20T16:00:00Z",
+        ticker: "NVDA",
+        value: 850.0,
+        source: "finnhub",
+      },
+      {
+        time: "2026-03-20T16:00:00Z",
+        ticker: "MSFT",
+        value: 416.0,
+        source: "finnhub",
+      },
+    ];
+    mockQuery.mockResolvedValueOnce({ rows: fakeRows });
+
+    const result = await queryLatestPrices(["NVDA", "MSFT"]);
+
+    expect(result).toEqual(fakeRows);
+    expect(result).toHaveLength(2);
+  });
+
+  it("passes tickers array as query parameter using ANY($1)", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    await queryLatestPrices(["NVDA", "MSFT", "GOOGL"]);
+
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain("DISTINCT ON (ticker)");
+    expect(sql).toContain("ANY($1)");
+    expect(params).toEqual([["NVDA", "MSFT", "GOOGL"]]);
+  });
+
+  it("orders by ticker then time DESC for DISTINCT ON", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    await queryLatestPrices(["NVDA"]);
+
+    const [sql] = mockQuery.mock.calls[0];
+    expect(sql).toMatch(/ORDER BY.*ticker.*time DESC/i);
+  });
+
+  it("returns empty array for empty tickers input", async () => {
+    const result = await queryLatestPrices([]);
+
+    expect(result).toEqual([]);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it("propagates database errors", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("connection refused"));
+
+    await expect(queryLatestPrices(["NVDA"])).rejects.toThrow(
+      "connection refused",
+    );
   });
 });

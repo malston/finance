@@ -21,8 +21,10 @@ type Store interface {
 // to the store. Retryable errors (rate limit, server errors) are logged and
 // skipped; other errors are also logged but do not halt remaining series.
 func FetchOnce(ctx context.Context, client *fred.Client, s Store, series []string, lookbackDays int) error {
+	var failures int
 	for _, seriesID := range series {
 		if err := fetchSeries(ctx, client, s, seriesID, lookbackDays); err != nil {
+			failures++
 			var retryErr *fred.RetryableError
 			if errors.As(err, &retryErr) {
 				slog.Warn("retryable error fetching series, will retry next cycle",
@@ -32,6 +34,9 @@ func FetchOnce(ctx context.Context, client *fred.Client, s Store, series []strin
 			slog.Warn("error fetching series", "series", seriesID, "error", err)
 			continue
 		}
+	}
+	if failures == len(series) {
+		return fmt.Errorf("all %d series failed to fetch", failures)
 	}
 	return nil
 }

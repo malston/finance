@@ -8,6 +8,7 @@ import os
 import sys
 import time
 
+from alerting.dispatch import dispatch_alert
 from alerting.rules_engine import evaluate_rules, load_alert_config
 from correlator import compute_correlations
 from index_builder import compute_domain_indices
@@ -62,6 +63,15 @@ def main() -> None:
             if fired:
                 logger.info("Fired %d alert(s): %s", len(fired),
                             ", ".join(a["rule_id"] for a in fired))
+                channels_config = alert_config.get("channels", {})
+                for alert in fired:
+                    try:
+                        results = dispatch_alert(alert, channels_config)
+                        logger.info("Dispatched alert %s: %s",
+                                    alert["rule_id"], results)
+                    except Exception:
+                        logger.exception("Dispatch failed for alert %s",
+                                         alert["rule_id"])
         except Exception:
             logger.exception("Alert evaluation failed")
 

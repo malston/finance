@@ -23,6 +23,9 @@ func baseURL(t *testing.T) string {
 	return "http://localhost:3000"
 }
 
+// httpClient is a shared HTTP client with a 30-second timeout for all test requests.
+var httpClient = &http.Client{Timeout: 30 * time.Second}
+
 // waitForApp polls the app URL until it responds or the timeout expires.
 func waitForApp(t *testing.T, timeout time.Duration) {
 	t.Helper()
@@ -32,7 +35,7 @@ func waitForApp(t *testing.T, timeout time.Duration) {
 	var lastErr error
 
 	for time.Now().Before(deadline) {
-		resp, err := http.Get(base)
+		resp, err := httpClient.Get(base)
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode < 500 {
@@ -107,7 +110,7 @@ func waitForScores(t *testing.T, timeout time.Duration) scoreResponse {
 	deadline := time.Now().Add(timeout)
 
 	for time.Now().Before(deadline) {
-		resp, err := http.Get(url)
+		resp, err := httpClient.Get(url)
 		if err != nil {
 			time.Sleep(5 * time.Second)
 			continue
@@ -146,7 +149,7 @@ func TestE2E_ScoresEndpointReturnsValidJSON(t *testing.T) {
 	base := baseURL(t)
 	url := fmt.Sprintf("%s/api/risk/scores", base)
 
-	resp, err := http.Get(url)
+	resp, err := httpClient.Get(url)
 	if err != nil {
 		t.Fatalf("GET %s failed: %v", url, err)
 	}
@@ -351,7 +354,7 @@ func TestE2E_DomainWeightsCorrect(t *testing.T) {
 	base := baseURL(t)
 	url := fmt.Sprintf("%s/api/risk/scores", base)
 
-	resp, err := http.Get(url)
+	resp, err := httpClient.Get(url)
 	if err != nil {
 		t.Fatalf("GET %s failed: %v", url, err)
 	}

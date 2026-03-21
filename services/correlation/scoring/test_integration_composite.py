@@ -30,7 +30,7 @@ def db_url():
     """Database URL from environment."""
     url = os.environ.get("DATABASE_URL")
     if not url:
-        pytest.fail("DATABASE_URL environment variable is required for integration tests")
+        pytest.skip("DATABASE_URL environment variable is required for integration tests")
     return url
 
 

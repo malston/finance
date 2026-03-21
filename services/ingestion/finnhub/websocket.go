@@ -57,8 +57,10 @@ func ParseTradeMessage(data []byte) ([]store.TimeSeriesPoint, error) {
 // and sends received trade data to the sink channel. It reconnects automatically
 // on disconnect with exponential backoff (max 60s).
 func StartWebSocket(ctx context.Context, wsURL string, apiKey string, symbols []string, sink chan<- store.TimeSeriesPoint) error {
-	backoff := 500 * time.Millisecond
+	initialBackoff := 500 * time.Millisecond
+	backoff := initialBackoff
 	maxBackoff := 60 * time.Second
+	stableConnectionThreshold := 60 * time.Second
 
 	for {
 		select {
@@ -67,9 +69,15 @@ func StartWebSocket(ctx context.Context, wsURL string, apiKey string, symbols []
 		default:
 		}
 
+		connStart := time.Now()
 		err := runWebSocket(ctx, wsURL, apiKey, symbols, sink)
 		if ctx.Err() != nil {
 			return ctx.Err()
+		}
+
+		// Reset backoff if the connection was stable for the threshold duration
+		if time.Since(connStart) >= stableConnectionThreshold {
+			backoff = initialBackoff
 		}
 
 		slog.Warn("WebSocket disconnected, reconnecting", "error", err, "backoff", backoff)

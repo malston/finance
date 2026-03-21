@@ -15,6 +15,13 @@ export async function GET(request: Request): Promise<Response> {
   const daysParam = url.searchParams.get("days");
   const days = daysParam ? parseInt(daysParam, 10) : 79;
 
+  if (!Number.isFinite(days) || days < 1) {
+    return NextResponse.json(
+      { error: "days must be a positive integer" },
+      { status: 400 },
+    );
+  }
+
   try {
     const rows = await queryTimeSeries(ticker, days);
     return NextResponse.json(rows);

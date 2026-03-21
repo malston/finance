@@ -83,9 +83,9 @@ echo "--- Inserting sample data ---"
 docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
     psql -U risk -d riskmonitor -c "
 INSERT INTO time_series (time, ticker, value, source) VALUES
-    ('2026-01-15 00:00:00+00', 'BAMLH0A0HYM2', 380.5, 'fred'),
-    ('2026-01-16 00:00:00+00', 'BAMLH0A0HYM2', 385.0, 'fred'),
-    ('2026-01-17 00:00:00+00', 'BAMLH0A0HYM2', 382.2, 'fred')
+    (CURRENT_TIMESTAMP - INTERVAL '3 days', 'BAMLH0A0HYM2', 380.5, 'fred'),
+    (CURRENT_TIMESTAMP - INTERVAL '2 days', 'BAMLH0A0HYM2', 385.0, 'fred'),
+    (CURRENT_TIMESTAMP - INTERVAL '1 day',  'BAMLH0A0HYM2', 382.2, 'fred')
 ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source;
 "
 echo "PASS: Sample data inserted"
@@ -106,12 +106,12 @@ echo "--- Verifying upsert idempotency ---"
 docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
     psql -U risk -d riskmonitor -c "
 INSERT INTO time_series (time, ticker, value, source) VALUES
-    ('2026-01-15 00:00:00+00', 'BAMLH0A0HYM2', 381.0, 'fred')
+    (CURRENT_TIMESTAMP - INTERVAL '3 days', 'BAMLH0A0HYM2', 381.0, 'fred')
 ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source;
 "
 
 UPDATED_VALUE=$(docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
-    psql -U risk -d riskmonitor -t -c "SELECT value FROM time_series WHERE ticker = 'BAMLH0A0HYM2' AND time = '2026-01-15 00:00:00+00';" 2>/dev/null | tr -d '[:space:]')
+    psql -U risk -d riskmonitor -t -c "SELECT value FROM time_series WHERE ticker = 'BAMLH0A0HYM2' ORDER BY time ASC LIMIT 1;" 2>/dev/null | tr -d '[:space:]')
 
 if [ "${UPDATED_VALUE}" != "381" ]; then
     echo "FAIL: Upsert did not update value (expected 381, got ${UPDATED_VALUE})" >&2
@@ -174,7 +174,7 @@ fi
 echo "PASS: API returned ${ARRAY_LENGTH} rows"
 
 # Verify each row has the required fields: time, ticker, value, source
-SHAPE_CHECK=$(echo "${API_RESPONSE}" | jq '.[0] | has("time", "ticker", "value", "source")')
+SHAPE_CHECK=$(echo "${API_RESPONSE}" | jq '.[0] | has("time") and has("ticker") and has("value") and has("source")')
 if [ "${SHAPE_CHECK}" != "true" ]; then
     echo "FAIL: Response rows missing required fields (time, ticker, value, source)" >&2
     echo "First row: $(echo "${API_RESPONSE}" | jq '.[0]')" >&2

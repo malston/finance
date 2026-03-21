@@ -17,6 +17,8 @@ DB_NAME="riskmonitor"
 DB_PASSWORD="${TIMESCALEDB_PASSWORD:-riskmonitor}"
 WEBHOOK_PORT=9876
 WEBHOOK_PID=""
+WEBHOOK_LOG=$(mktemp /tmp/e2e-webhook-payloads.XXXXXX.log)
+ALERT_CONFIG=$(mktemp /tmp/e2e-alert-config.XXXXXX.yaml)
 
 cleanup() {
     echo "--- Cleaning up ---"
@@ -24,7 +26,10 @@ cleanup() {
         kill "${WEBHOOK_PID}" 2>/dev/null || true
     fi
     docker compose -f "${PROJECT_DIR}/docker-compose.yml" down -v --remove-orphans 2>/dev/null || true
-    rm -f /tmp/e2e-webhook-payloads.log /tmp/e2e-alert-config.yaml
+    rm -f "${WEBHOOK_LOG}" "${ALERT_CONFIG}"
+    if [ -n "${E2E_VENV:-}" ] && [ -d "${E2E_VENV:-}" ]; then
+        rm -rf "${E2E_VENV}"
+    fi
 }
 trap cleanup EXIT
 
@@ -87,7 +92,7 @@ echo ""
 # 1. Start a local webhook receiver to capture Slack dispatch payloads
 # -------------------------------------------------------------------
 echo "--- Starting local webhook receiver on port ${WEBHOOK_PORT} ---"
-rm -f /tmp/e2e-webhook-payloads.log
+rm -f ${WEBHOOK_LOG}
 
 python3 -c "
 import http.server, json, sys, os
@@ -96,7 +101,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(length).decode()
-        with open('/tmp/e2e-webhook-payloads.log', 'a') as f:
+        with open('${WEBHOOK_LOG}', 'a') as f:
             f.write(body + '\n')
         self.send_response(200)
         self.end_headers()
@@ -116,8 +121,13 @@ if ! kill -0 "${WEBHOOK_PID}" 2>/dev/null; then
 fi
 echo "PASS: Webhook receiver running (PID ${WEBHOOK_PID})"
 
-# Determine the host IP that Docker containers can reach
-HOST_IP=$(python3 -c "
+# Determine the host IP that Docker containers can reach.
+# Prefer host.docker.internal (macOS/Windows), fall back to docker bridge gateway.
+if docker run --rm alpine ping -c 1 -W 1 host.docker.internal >/dev/null 2>&1; then
+    HOST_IP="host.docker.internal"
+else
+    HOST_IP=$(docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null || \
+        python3 -c "
 import socket
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 try:
@@ -126,6 +136,7 @@ try:
 finally:
     s.close()
 ")
+fi
 WEBHOOK_URL="http://${HOST_IP}:${WEBHOOK_PORT}/webhook"
 echo "Webhook URL for containers: ${WEBHOOK_URL}"
 
@@ -192,7 +203,7 @@ assert_eq "VIX seeded at 35.2" "35.2" "${VIX_VALUE}"
 # -------------------------------------------------------------------
 echo ""
 echo "--- Writing test alert config ---"
-cat > /tmp/e2e-alert-config.yaml <<YAML
+cat > ${ALERT_CONFIG} <<YAML
 channels:
   email:
     enabled: false
@@ -242,12 +253,11 @@ echo "--- Running alert evaluation (iteration 1) ---"
 DB_URL="postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}"
 CORRELATION_DIR="${PROJECT_DIR}/services/correlation"
 
-# Install Python deps if needed
-if ! python3 -c "import psycopg2" 2>/dev/null; then
-    echo "--- Installing Python dependencies ---"
-    pip3 install -q psycopg2-binary pyyaml requests 2>/dev/null || \
-    pip install -q psycopg2-binary pyyaml requests 2>/dev/null
-fi
+# Set up a virtual environment for Python dependencies
+E2E_VENV=$(mktemp -d /tmp/e2e-alerting-venv.XXXXXX)
+python3 -m venv "${E2E_VENV}"
+source "${E2E_VENV}/bin/activate"
+pip install -q psycopg2-binary pyyaml requests 2>/dev/null
 
 # Run evaluate_rules 3 times to build consecutive count for composite_critical.
 # The vix_spike rule only needs 1 consecutive reading, so it fires on the first call.
@@ -259,7 +269,7 @@ sys.path.insert(0, '${CORRELATION_DIR}')
 from alerting.rules_engine import evaluate_rules, load_alert_config
 from alerting.dispatch import dispatch_alert
 
-config = load_alert_config('/tmp/e2e-alert-config.yaml')
+config = load_alert_config('${ALERT_CONFIG}')
 db_url = '${DB_URL}'
 fired = evaluate_rules(db_url, config)
 if fired:
@@ -302,12 +312,12 @@ echo ""
 echo "--- Verifying Slack webhook received payloads ---"
 sleep 1  # ensure webhook server had time to flush
 
-if [ -f /tmp/e2e-webhook-payloads.log ]; then
-    WEBHOOK_LINE_COUNT=$(wc -l < /tmp/e2e-webhook-payloads.log | tr -d '[:space:]')
+if [ -f ${WEBHOOK_LOG} ]; then
+    WEBHOOK_LINE_COUNT=$(wc -l < ${WEBHOOK_LOG} | tr -d '[:space:]')
     assert_ge "webhook received at least 2 payloads" "2" "${WEBHOOK_LINE_COUNT}"
 
     # Verify payload structure (Block Kit attachments)
-    FIRST_PAYLOAD=$(head -1 /tmp/e2e-webhook-payloads.log)
+    FIRST_PAYLOAD=$(head -1 ${WEBHOOK_LOG})
     HAS_ATTACHMENTS=$(echo "${FIRST_PAYLOAD}" | jq 'has("attachments")')
     assert_eq "webhook payload has attachments" "true" "${HAS_ATTACHMENTS}"
 
@@ -331,7 +341,7 @@ import sys
 sys.path.insert(0, '${CORRELATION_DIR}')
 from alerting.rules_engine import evaluate_rules, load_alert_config
 
-config = load_alert_config('/tmp/e2e-alert-config.yaml')
+config = load_alert_config('${ALERT_CONFIG}')
 fired = evaluate_rules('${DB_URL}', config)
 print(f'  Fired {len(fired)} alert(s) during cooldown')
 "
@@ -363,7 +373,7 @@ import sys
 sys.path.insert(0, '${CORRELATION_DIR}')
 from alerting.rules_engine import evaluate_rules, load_alert_config
 
-config = load_alert_config('/tmp/e2e-alert-config.yaml')
+config = load_alert_config('${ALERT_CONFIG}')
 fired = evaluate_rules('${DB_URL}', config)
 if fired:
     for a in fired:
@@ -404,7 +414,7 @@ ALERTS_COUNT=$(echo "${ALERTS_RESPONSE}" | jq '.alerts | length')
 assert_ge "GET /api/risk/alerts returns alerts" "2" "${ALERTS_COUNT}"
 
 # Verify response fields
-FIRST_ALERT_FIELDS=$(echo "${ALERTS_RESPONSE}" | jq '.alerts[0] | has("id", "rule_id", "triggered_at", "value", "message", "channels", "delivered")')
+FIRST_ALERT_FIELDS=$(echo "${ALERTS_RESPONSE}" | jq '.alerts[0] | has("id") and has("rule_id") and has("triggered_at") and has("value") and has("message") and has("channels") and has("delivered")')
 assert_eq "alert response has correct fields" "true" "${FIRST_ALERT_FIELDS}"
 
 # Verify one of the alerts is composite_critical

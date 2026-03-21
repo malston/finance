@@ -122,5 +122,9 @@ func (c *Client) FetchQuotes(ctx context.Context, symbols []string, rateDelay ti
 		})
 	}
 
+	if len(points) == 0 && len(symbols) > 0 {
+		return nil, fmt.Errorf("all %d tickers failed to return quotes", len(symbols))
+	}
+
 	return points, nil
 }

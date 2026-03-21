@@ -47,6 +47,10 @@ export async function queryTimeSeries(
     throw new Error("ticker is required");
   }
 
+  if (!Number.isFinite(days)) {
+    return [];
+  }
+
   const effectiveDays = Math.max(days, 1);
 
   const sql = `

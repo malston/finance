@@ -16,7 +16,9 @@ type Config struct {
 	Health  HealthConfig  `yaml:"health"`
 }
 
-// HealthConfig holds per-source staleness thresholds.
+// HealthConfig holds per-source staleness thresholds. These values are consumed
+// by the Next.js health API route via the source_health table to determine
+// whether a data source is stale.
 type HealthConfig struct {
 	Sources map[string]SourceHealthConfig `yaml:"sources"`
 }
