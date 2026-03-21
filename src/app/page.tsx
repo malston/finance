@@ -5,6 +5,7 @@ import { C } from "@/lib/theme";
 import { HYCreditSpreadCard } from "@/components/hy-credit-card";
 import { TreasuryCreditCard } from "@/components/treasury-credit-card";
 import { EquityEtfCard } from "@/components/equity-etf-card";
+import { SectorPanels } from "@/components/risk/sector-panels";
 
 function HeaderClock() {
   const [time, setTime] = useState(new Date());
@@ -182,26 +183,7 @@ export default function DashboardPage() {
           <HYCreditSpreadCard />
           <TreasuryCreditCard />
           <EquityEtfCard />
-          {[
-            "AI / Tech Concentration",
-            "Energy & Geopolitical",
-            "Cross-Domain Contagion",
-          ].map((label) => (
-            <div
-              key={label}
-              style={{
-                background: C.panel,
-                border: `1px solid ${C.panelBorder}`,
-                borderRadius: 8,
-                padding: "14px 16px",
-                minHeight: 60,
-              }}
-            >
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
-                {label}
-              </div>
-            </div>
-          ))}
+          <SectorPanels />
         </div>
 
         {/* Legend */}
