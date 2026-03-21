@@ -84,26 +84,26 @@ def score_private_credit(db_url: str, config: dict[str, Any]) -> float:
     Returns:
         The computed score (0-100).
     """
-    pc_config = config["scoring"]["private_credit"]
-    components = pc_config["components"]
+    pc_config = config.get("scoring", {}).get("private_credit", {})
+    components = pc_config.get("components", {})
     sub_scores: dict[str, float] = {}
 
     conn = psycopg2.connect(db_url)
     try:
         # HY Spread level
-        hy_config = components["hy_spread"]
-        hy_value = fetch_latest_value(conn, hy_config["ticker"])
+        hy_config = components.get("hy_spread", {})
+        hy_value = fetch_latest_value(conn, hy_config.get("ticker", "BAMLH0A0HYM2"))
         if hy_value is not None:
             sub_scores["hy_spread"] = linear_score(
-                hy_value, hy_config["min_value"], hy_config["max_value"],
+                hy_value, hy_config.get("min_value", 300), hy_config.get("max_value", 800),
             )
 
         # BDC NAV discount (inverted scale)
-        bdc_config = components["bdc_discount"]
-        bdc_value = fetch_latest_value(conn, bdc_config["ticker"])
+        bdc_config = components.get("bdc_discount", {})
+        bdc_value = fetch_latest_value(conn, bdc_config.get("ticker", "BDC_AVG_NAV_DISCOUNT"))
         if bdc_value is not None:
             sub_scores["bdc_discount"] = inverted_linear_score(
-                bdc_value, bdc_config["min_value"], bdc_config["max_value"],
+                bdc_value, bdc_config.get("min_value", 0), bdc_config.get("max_value", -0.20),
             )
 
         # Redemption flow proxy (placeholder until volume data available)
@@ -111,14 +111,14 @@ def score_private_credit(db_url: str, config: dict[str, Any]) -> float:
         sub_scores["redemption_flow"] = rf_config.get("placeholder", 50)
 
         # Spread rate of change
-        roc_config = components["spread_roc"]
-        lookback = roc_config.get("lookback_days", 5)
-        current_spread = hy_value  # reuse from above
-        past_spread = _fetch_value_days_ago(conn, roc_config["ticker"], lookback)
+        roc_config = components.get("spread_roc", {})
+        lookback = roc_config.get("lookback_days", 30)
+        current_spread = hy_value
+        past_spread = _fetch_value_days_ago(conn, roc_config.get("ticker", "BAMLH0A0HYM2"), lookback)
         if current_spread is not None and past_spread is not None:
             roc = current_spread - past_spread
             sub_scores["spread_roc"] = linear_score(
-                roc, roc_config["min_value"], roc_config["max_value"],
+                roc, roc_config.get("min_value", 0), roc_config.get("max_value", 200),
             )
 
         score = compute_composite_score(sub_scores, pc_config)

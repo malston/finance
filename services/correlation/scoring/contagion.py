@@ -105,32 +105,32 @@ def score_contagion_from_values(
     Returns:
         The computed score (0-100).
     """
-    ct_config = config["scoring"]["contagion"]
-    components = ct_config["components"]
+    ct_config = config.get("scoring", {}).get("contagion", {})
+    components = ct_config.get("components", {})
     sub_scores: dict[str, float] = {}
 
     # Max pairwise correlation
     if max_corr is not None:
-        corr_cfg = components["max_correlation"]
+        corr_cfg = components.get("max_correlation", {})
         sub_scores["max_correlation"] = linear_score(
-            max_corr, corr_cfg["min_value"], corr_cfg["max_value"],
+            max_corr, corr_cfg.get("min_value", 0.1), corr_cfg.get("max_value", 0.7),
         )
 
     # VIX level
     vix_score = None
     if vix_value is not None:
-        vix_cfg = components["vix_level"]
+        vix_cfg = components.get("vix_level", {})
         vix_score = linear_score(
-            vix_value, vix_cfg["min_value"], vix_cfg["max_value"],
+            vix_value, vix_cfg.get("min_value", 15), vix_cfg.get("max_value", 40),
         )
         sub_scores["vix_level"] = vix_score
 
     # MOVE index level
     move_score = None
     if move_value is not None:
-        move_cfg = components["move_level"]
+        move_cfg = components.get("move_level", {})
         move_score = linear_score(
-            move_value, move_cfg["min_value"], move_cfg["max_value"],
+            move_value, move_cfg.get("min_value", 80), move_cfg.get("max_value", 160),
         )
         sub_scores["move_level"] = move_score
 

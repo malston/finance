@@ -32,7 +32,7 @@ def get_threat_level(
     Returns:
         Tuple of (level, color) strings.
     """
-    levels = config["scoring"]["composite"]["threat_levels"]
+    levels = config.get("scoring", {}).get("composite", {}).get("threat_levels", [])
     for entry in levels:
         if score <= entry["max_score"]:
             return entry["level"], entry["color"]
@@ -57,13 +57,13 @@ def compute_composite_from_values(
     Returns:
         The computed composite score (0-100), rounded to 2 decimal places.
     """
-    domains = config["scoring"]["composite"]["domains"]
+    domains = config.get("scoring", {}).get("composite", {}).get("domains", {})
     weighted_sum = 0.0
     total_weight = 0.0
 
     for name, domain_config in domains.items():
         if name in scores:
-            weight = domain_config["weight"]
+            weight = domain_config.get("weight", 0.25)
             weighted_sum += scores[name] * weight
             total_weight += weight
 
@@ -105,12 +105,12 @@ def score_composite(db_url: str, config: dict[str, Any]) -> float:
     Returns:
         The computed composite score (0-100).
     """
-    domains = config["scoring"]["composite"]["domains"]
+    domains = config.get("scoring", {}).get("composite", {}).get("domains", {})
     conn = psycopg2.connect(db_url)
     try:
         scores: dict[str, float] = {}
         for name, domain_config in domains.items():
-            ticker = domain_config["ticker"]
+            ticker = domain_config.get("ticker", f"SCORE_{name.upper()}")
             value = fetch_latest_value(conn, ticker)
             if value is not None:
                 scores[name] = value

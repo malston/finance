@@ -6,7 +6,7 @@ scoring:
         sub_weight: 0.35
         ticker: BAMLH0A0HYM2
         min_value: 300
-        max_value: 800
+        max_value: 600
       bdc_discount:
         sub_weight: 0.25
         ticker: BDC_AVG_NAV_DISCOUNT
@@ -22,8 +22,8 @@ scoring:
         sub_weight: 0.25
         ticker: BAMLH0A0HYM2
         min_value: 0
-        max_value: 200
-        lookback_days: 30
+        max_value: 50
+        lookback_days: 5
 
   ai_concentration:
     weight: 0.20
