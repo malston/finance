@@ -11,9 +11,43 @@ import (
 
 // SearchResult represents a single result from a Valyu search.
 type SearchResult struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
-	URL     string `json:"url"`
+	Title   string      `json:"title"`
+	Content FlexContent `json:"content"`
+	URL     string      `json:"url"`
+}
+
+// FlexContent handles Valyu's content field which can be a string or an array.
+type FlexContent string
+
+func (f *FlexContent) UnmarshalJSON(data []byte) error {
+	// Try string first
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		*f = FlexContent(s)
+		return nil
+	}
+
+	// Try array of strings
+	var arr []string
+	if err := json.Unmarshal(data, &arr); err == nil {
+		var combined string
+		for _, item := range arr {
+			combined += item + "\n"
+		}
+		*f = FlexContent(combined)
+		return nil
+	}
+
+	// Try array of objects (extract string values)
+	var arrAny []any
+	if err := json.Unmarshal(data, &arrAny); err == nil {
+		*f = FlexContent(string(data))
+		return nil
+	}
+
+	// Fallback: store raw JSON as string
+	*f = FlexContent(string(data))
+	return nil
 }
 
 // Config holds Valyu client settings.

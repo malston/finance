@@ -127,7 +127,7 @@ func FetchNewsSentiment(ctx context.Context, client *Client, es ExtendedStore, b
 		var sentimentSum float64
 
 		for _, r := range results {
-			sentiment := estimateSentiment(r.Title + " " + r.Content)
+			sentiment := estimateSentiment(r.Title + " " + string(r.Content))
 			rows = append(rows, NewsRow{
 				Time:       time.Now().UTC(),
 				Domain:     domain,
@@ -215,7 +215,7 @@ var navPattern = regexp.MustCompile(`(?i)(?:net asset value|NAV)\s*(?:per share)
 
 func extractNAV(results []SearchResult) float64 {
 	for _, r := range results {
-		matches := navPattern.FindStringSubmatch(r.Content)
+		matches := navPattern.FindStringSubmatch(string(r.Content))
 		if len(matches) >= 2 {
 			val, err := strconv.ParseFloat(matches[1], 64)
 			if err == nil && val > 0 {
@@ -286,7 +286,7 @@ func extractSourceName(url string) string {
 var tradePattern = regexp.MustCompile(`(?i)([\w\s\.]+?)\s+(?:sold|bought|sale|purchase)\s+(\d[\d,]*)\s+shares?\s*(?:of\s+\w+\s+)?(?:at\s+\$?([\d]+\.?\d*))`)
 
 func parseInsiderTrade(result SearchResult, ticker string) *InsiderTradeRow {
-	text := result.Title + " " + result.Content
+	text := result.Title + " " + string(result.Content)
 	matches := tradePattern.FindStringSubmatch(text)
 
 	if len(matches) < 3 {

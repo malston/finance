@@ -172,9 +172,7 @@ func main() {
 
 		go fetchValyuFilings(ctx, valyuClient, valyuStore, valyuBudget, cfg, tsStore)
 		go fetchValyuInsider(ctx, valyuClient, valyuStore, valyuBudget, cfg, tsStore)
-		if valyu.IsMarketHours(time.Now()) {
-			go fetchValyuSentiment(ctx, valyuClient, valyuStore, valyuBudget, cfg, tsStore)
-		}
+		go fetchValyuSentiment(ctx, valyuClient, valyuStore, valyuBudget, cfg, tsStore)
 	}
 
 	budgetResetTicker := time.NewTicker(1 * time.Hour)
