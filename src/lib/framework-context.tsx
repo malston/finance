@@ -3,10 +3,12 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import type { Framework } from "./framework-config";
 
-const FrameworkContext = createContext<{
+interface FrameworkContextValue {
   framework: Framework;
   setFramework: (f: Framework) => void;
-}>({ framework: "bookstaber", setFramework: () => {} });
+}
+
+const FrameworkContext = createContext<FrameworkContextValue | null>(null);
 
 function readStoredFramework(): Framework {
   if (typeof window === "undefined") return "bookstaber";
@@ -37,6 +39,10 @@ export function FrameworkProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useFramework() {
-  return useContext(FrameworkContext);
+export function useFramework(): FrameworkContextValue {
+  const context = useContext(FrameworkContext);
+  if (!context) {
+    throw new Error("useFramework must be used within a FrameworkProvider");
+  }
+  return context;
 }

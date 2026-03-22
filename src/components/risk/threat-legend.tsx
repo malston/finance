@@ -4,20 +4,16 @@ import { C } from "@/lib/theme";
 import { useFramework } from "@/lib/framework-context";
 import { FRAMEWORK_CONFIG } from "@/lib/framework-config";
 
-function bandLabel(level: string, min: number, max: number): string {
-  return `${level} (${min}-${max})`;
-}
-
 export function ThreatLegend() {
   const { framework } = useFramework();
   const threatLevels = FRAMEWORK_CONFIG[framework].threatLevels;
 
   const levels = threatLevels.map((band, i) => {
-    const min = i === 0 ? 0 : threatLevels[i - 1].max + 1;
-    return {
-      color: band.color,
-      label: bandLabel(band.level, min, band.max),
-    };
+    const label =
+      i === 0
+        ? `${band.level} (0\u2013${band.max})`
+        : `${band.level} (>${threatLevels[i - 1].max}\u2013${band.max})`;
+    return { color: band.color, label };
   });
 
   return (

@@ -22,7 +22,7 @@ Three independent services communicate via a shared TimescaleDB instance:
 - **Correlation** (`services/correlation/`) — Python service computing domain indices, rolling 30-day Pearson correlations across 3 pairwise combinations, threat scores (0–100 per domain) under both frameworks simultaneously, and alert evaluation. Runs on a 5-minute cycle. Bookstaber scores use standard tickers (`SCORE_COMPOSITE`), Yardeni scores use prefixed tickers (`YARDENI_SCORE_COMPOSITE`).
 - **Dashboard** (`src/`) — Next.js 15 app with API routes that read from TimescaleDB. Dark-themed Recharts dashboard with React Query for live data fetching. Framework toggle in the header switches between Bookstaber and Yardeni interpretations instantly — no reload, no re-computation.
 
-All scoring weights, thresholds, and alert rules live in YAML config files — nothing is hardcoded.
+All ingestion and correlation scoring weights, thresholds, and alert rules are defined in YAML config files; UI and API framework presets are configured in TypeScript.
 
 ## Quick Start
 
@@ -63,23 +63,23 @@ pnpm dev   # http://localhost:3000
 
 ## Risk Domains
 
-| Domain | Bookstaber Weight | Yardeni Weight | Key Tickers | What It Tracks |
-| ------ | ----------------- | -------------- | ----------- | -------------- |
-| Private Credit Stress | 0.30 | 0.25 | OWL, ARCC, BXSL, OBDC, HYG, HY spread (FRED) | BDC NAV discounts, HY spreads, redemption flows |
-| AI / Tech Concentration | 0.20 | 0.20 | NVDA, MSFT, GOOGL, META, AMZN, SMH, SPY/RSP ratio | Market cap concentration, semiconductor exposure |
-| Energy / Geopolitical | 0.25 | 0.30 | CL=F, NG=F, XLU, EWT | Crude oil level/volatility, Taiwan ETF drawdown |
-| Cross-Domain Contagion | 0.25 | 0.25 | VIX (via VIXY proxy), pairwise correlations | Max rolling correlation, volatility co-movement |
+| Domain                  | Bookstaber Weight | Yardeni Weight | Key Tickers                                       | What It Tracks                                   |
+| ----------------------- | ----------------- | -------------- | ------------------------------------------------- | ------------------------------------------------ |
+| Private Credit Stress   | 0.30              | 0.25           | OWL, ARCC, BXSL, OBDC, HYG, HY spread (FRED)      | BDC NAV discounts, HY spreads, redemption flows  |
+| AI / Tech Concentration | 0.20              | 0.20           | NVDA, MSFT, GOOGL, META, AMZN, SMH, SPY/RSP ratio | Market cap concentration, semiconductor exposure |
+| Energy / Geopolitical   | 0.25              | 0.30           | CL=F, NG=F, XLU, EWT                              | Crude oil level/volatility, Taiwan ETF drawdown  |
+| Cross-Domain Contagion  | 0.25              | 0.25           | VIX (via VIXY proxy), pairwise correlations       | Max rolling correlation, volatility co-movement  |
 
 The weight differences reflect genuine analytical disagreement. Bookstaber overweights private credit because he sees it as the accelerant — the illiquid loans that force selling into public markets. Yardeni overweights energy/geo because he takes geopolitics seriously but trusts market self-correction mechanisms to contain credit stress.
 
 ### Threat Levels
 
-| Level | Bookstaber Band | Yardeni Band | Color |
-| ----- | --------------- | ------------ | ----- |
-| LOW | 0 - 25 | 0 – 30 | Green |
-| ELEVATED | 26 – 50 | 31 – 55 | Yellow |
-| HIGH | 51 – 75 | 56 – 80 | Orange |
-| CRITICAL | 76 – 100 | 81 – 100 | Red |
+| Level    | Bookstaber Band | Yardeni Band | Color  |
+| -------- | --------------- | ------------ | ------ |
+| LOW      | 0 - 25          | 0 – 30       | Green  |
+| ELEVATED | 26 – 50         | 31 – 55      | Yellow |
+| HIGH     | 51 – 75         | 56 – 80      | Orange |
+| CRITICAL | 76 – 100        | 81 – 100     | Red    |
 
 What Bookstaber calls CRITICAL at 76, Yardeni calls HIGH. Yardeni only hits CRITICAL when multiple domains are simultaneously maxed — because he's watched 45 years of cycles and has a higher threshold for alarm.
 
@@ -89,16 +89,16 @@ For detailed explanations of each domain, how to interpret scores, and what to w
 
 All routes are under `/api/risk/`. Routes that return scores or threat levels accept an optional `?framework=` parameter (`bookstaber` or `yardeni`, default `bookstaber`). Routes that return raw data are framework-agnostic.
 
-| Endpoint | Method | Framework-Aware | Description |
-| -------- | ------ | --------------- | ----------- |
-| `/api/risk/scores` | GET | Yes | Composite + 4 domain scores with threat levels |
-| `/api/risk/correlations?days=N` | GET | Yes | Rolling pairwise correlations (threshold differs) |
-| `/api/risk/health` | GET | No | Source staleness and failure tracking |
-| `/api/risk/timeseries?ticker=X&days=N` | GET | No | Historical values for charting |
-| `/api/risk/latest-prices` | GET | No | Most recent price per display ticker |
-| `/api/risk/news?domain=X&limit=N` | GET | Yes | Sentiment headlines by domain (sort order differs) |
-| `/api/risk/freshness` | GET | No | Per-ticker data age and status |
-| `/api/risk/alerts` | GET/POST | No | Alert history and acknowledgement |
+| Endpoint                               | Method   | Framework-Aware | Description                                        |
+| -------------------------------------- | -------- | --------------- | -------------------------------------------------- |
+| `/api/risk/scores`                     | GET      | Yes             | Composite + 4 domain scores with threat levels     |
+| `/api/risk/correlations?days=N`        | GET      | Yes             | Rolling pairwise correlations (threshold differs)  |
+| `/api/risk/health`                     | GET      | No              | Source staleness and failure tracking              |
+| `/api/risk/timeseries?ticker=X&days=N` | GET      | No              | Historical values for charting                     |
+| `/api/risk/latest-prices`              | GET      | No              | Most recent price per display ticker               |
+| `/api/risk/news?domain=X&limit=N`      | GET      | Yes             | Sentiment headlines by domain (sort order differs) |
+| `/api/risk/freshness`                  | GET      | No              | Per-ticker data age and status                     |
+| `/api/risk/alerts`                     | GET/POST | No              | Alert history and acknowledgement                  |
 
 ## Testing
 
@@ -140,12 +140,12 @@ All E2E scripts start Docker, seed data, run assertions, and clean up.
 
 ## Configuration
 
-| File | Purpose |
-| ---- | ------- |
-| `services/ingestion/config.yaml` | Tickers, polling intervals, API keys (env vars), staleness thresholds |
-| `services/correlation/scoring_config.yaml` | Bookstaber framework: domain weights, sub-component thresholds, threat level boundaries |
-| `services/correlation/scoring_config_yardeni.yaml` | Yardeni framework: adjusted weights and wider thresholds reflecting resilience thesis |
-| `services/correlation/alert_config.yaml` | Alert rules, consecutive reading requirements, cooldowns, channel config |
+| File                                               | Purpose                                                                                 |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `services/ingestion/config.yaml`                   | Tickers, polling intervals, API keys (env vars), staleness thresholds                   |
+| `services/correlation/scoring_config.yaml`         | Bookstaber framework: domain weights, sub-component thresholds, threat level boundaries |
+| `services/correlation/scoring_config_yardeni.yaml` | Yardeni framework: adjusted weights and wider thresholds reflecting resilience thesis   |
+| `services/correlation/alert_config.yaml`           | Alert rules, consecutive reading requirements, cooldowns, channel config                |
 
 ### Adding a New Framework
 
@@ -160,11 +160,11 @@ The data pipeline, correlation engine, and ticker coverage don't change.
 
 ## Data Sources
 
-| Source | What It Provides | Frequency | Cost |
-| ------ | ---------------- | --------- | ---- |
-| Finnhub (free tier) | Equity/ETF prices, WebSocket streaming | Every 5 min + real-time | $0 |
-| FRED (free w/ key) | Credit spreads, Treasury yields | Daily | $0 |
-| Valyu API | SEC filings, news sentiment, insider trading | Hourly/daily | ~$10–20/mo |
+| Source              | What It Provides                             | Frequency               | Cost       |
+| ------------------- | -------------------------------------------- | ----------------------- | ---------- |
+| Finnhub (free tier) | Equity/ETF prices, WebSocket streaming       | Every 5 min + real-time | $0         |
+| FRED (free w/ key)  | Credit spreads, Treasury yields              | Daily                   | $0         |
+| Valyu API           | SEC filings, news sentiment, insider trading | Hourly/daily            | ~$10–20/mo |
 
 ## License
 

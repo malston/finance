@@ -18,10 +18,10 @@ test.describe("Dual Framework Toggle - Frontend", () => {
 
     // Threat legend bands
     const legend = page.getByTestId("threat-legend");
-    await expect(legend.getByText("LOW (0-25)")).toBeVisible();
-    await expect(legend.getByText("ELEVATED (26-50)")).toBeVisible();
-    await expect(legend.getByText("HIGH (51-75)")).toBeVisible();
-    await expect(legend.getByText("CRITICAL (76-100)")).toBeVisible();
+    await expect(legend.getByText("LOW (0\u201325)")).toBeVisible();
+    await expect(legend.getByText("ELEVATED (>25\u201350)")).toBeVisible();
+    await expect(legend.getByText("HIGH (>50\u201375)")).toBeVisible();
+    await expect(legend.getByText("CRITICAL (>75\u2013100)")).toBeVisible();
 
     // Toggle segment: "Bookstaber" button is pressed
     const toggle = page.getByTestId("framework-toggle");
@@ -47,10 +47,10 @@ test.describe("Dual Framework Toggle - Frontend", () => {
 
     // Threat legend bands change to Yardeni thresholds
     const legend = page.getByTestId("threat-legend");
-    await expect(legend.getByText("LOW (0-30)")).toBeVisible();
-    await expect(legend.getByText("ELEVATED (31-55)")).toBeVisible();
-    await expect(legend.getByText("HIGH (56-80)")).toBeVisible();
-    await expect(legend.getByText("CRITICAL (81-100)")).toBeVisible();
+    await expect(legend.getByText("LOW (0\u201330)")).toBeVisible();
+    await expect(legend.getByText("ELEVATED (>30\u201355)")).toBeVisible();
+    await expect(legend.getByText("HIGH (>55\u201380)")).toBeVisible();
+    await expect(legend.getByText("CRITICAL (>80\u2013100)")).toBeVisible();
 
     // Yardeni toggle segment is active
     await expect(yardeniBtn).toHaveAttribute("aria-pressed", "true");

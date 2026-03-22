@@ -20,10 +20,10 @@ describe("ThreatLegend with framework context", () => {
       </FrameworkProvider>,
     );
 
-    expect(screen.getByText("LOW (0-25)")).toBeInTheDocument();
-    expect(screen.getByText("ELEVATED (26-50)")).toBeInTheDocument();
-    expect(screen.getByText("HIGH (51-75)")).toBeInTheDocument();
-    expect(screen.getByText("CRITICAL (76-100)")).toBeInTheDocument();
+    expect(screen.getByText("LOW (0\u201325)")).toBeInTheDocument();
+    expect(screen.getByText("ELEVATED (>25\u201350)")).toBeInTheDocument();
+    expect(screen.getByText("HIGH (>50\u201375)")).toBeInTheDocument();
+    expect(screen.getByText("CRITICAL (>75\u2013100)")).toBeInTheDocument();
   });
 
   it("renders Yardeni threat bands when yardeni is active", () => {
@@ -35,10 +35,10 @@ describe("ThreatLegend with framework context", () => {
       </FrameworkProvider>,
     );
 
-    expect(screen.getByText("LOW (0-30)")).toBeInTheDocument();
-    expect(screen.getByText("ELEVATED (31-55)")).toBeInTheDocument();
-    expect(screen.getByText("HIGH (56-80)")).toBeInTheDocument();
-    expect(screen.getByText("CRITICAL (81-100)")).toBeInTheDocument();
+    expect(screen.getByText("LOW (0\u201330)")).toBeInTheDocument();
+    expect(screen.getByText("ELEVATED (>30\u201355)")).toBeInTheDocument();
+    expect(screen.getByText("HIGH (>55\u201380)")).toBeInTheDocument();
+    expect(screen.getByText("CRITICAL (>80\u2013100)")).toBeInTheDocument();
   });
 
   it("renders four items for Yardeni framework", () => {

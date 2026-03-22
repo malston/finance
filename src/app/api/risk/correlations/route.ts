@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { queryCorrelations } from "@/lib/timescaledb";
-import { FRAMEWORK_CONFIG, parseFramework } from "@/lib/framework-config";
+import {
+  FRAMEWORK_CONFIG,
+  parseFramework,
+  type Framework,
+} from "@/lib/framework-config";
 
 interface CorrelationPoint {
   time: string;
@@ -18,7 +22,7 @@ interface CorrelationResponse {
   credit_energy: CorrelationPoint[];
   tech_energy: CorrelationPoint[];
   max_current: MaxCurrent;
-  framework: string;
+  framework: Framework;
   threshold: number;
 }
 
