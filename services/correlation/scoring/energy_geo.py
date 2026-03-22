@@ -94,7 +94,8 @@ def score_energy_geo_from_values(
         config: Full scoring config dict (with top-level 'scoring' key).
 
     Returns:
-        The computed score (0-100), or None if no data is available.
+        The computed score (0-100), or None if insufficient data is available
+        (no inputs, or fewer than min_components sub-scores when configured).
     """
     eg_config = config.get("scoring", {}).get("energy_geo", {})
     components = eg_config.get("components", {})
@@ -137,14 +138,15 @@ def score_energy_geo(db_url: str, config: dict[str, Any]) -> float | None:
     sub-component scores using configurable thresholds, writes the result
     back as SCORE_ENERGY_GEO, and returns the score.
 
-    Returns None without writing to DB if no input data is available.
+    Returns None without writing to DB if insufficient input data is available.
 
     Args:
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
 
     Returns:
-        The computed score (0-100), or None if no data is available.
+        The computed score (0-100), or None if insufficient data is available
+        (no inputs, or fewer than min_components sub-scores when configured).
     """
     eg_config = config.get("scoring", {}).get("energy_geo", {})
     components = eg_config.get("components", {})

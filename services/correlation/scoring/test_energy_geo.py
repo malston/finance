@@ -444,8 +444,9 @@ class TestMinComponentsEnforcement:
             ewt_drawdown=None,
             config=self.MIN_COMPONENTS_CONFIG,
         )
-        assert result is not None
-        assert result > 0
+        # Weights: 0.30 + 0.35 = 0.65
+        # (61.11*0.30 + 50*0.35) / 0.65 = (18.33 + 17.5) / 0.65 = 55.13
+        assert result == pytest.approx(55.13, abs=0.5)
 
 
 class TestRollingVolatilityEdgeCases:
