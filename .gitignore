@@ -46,10 +46,22 @@ AGENTS.MD
 .claude/
 IMPLEMENTATION_SPEC.md
 
-docs/
-
 # local development database
 .local-data/
 
 # test scripts
 test-scripts/
+
+# Python virtual environments
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Paivot runtime state (managed by pvg)
+.vault/issues/
+.vault/.nd.yaml
+.vault/.piv-loop-state.json
+.vault/.piv-loop-snapshot.json
+.vault/.dispatcher-state.json
+.vault/.vlt.lock
+.vault/.guard/
