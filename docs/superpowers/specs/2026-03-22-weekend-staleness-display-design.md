@@ -28,22 +28,30 @@ When data is aged, render an "as of" line below the threat level:
   as of Fri, Mar 20 4:00 PM
 ```
 
-- Format: `as of {weekday}, {month} {day} {time}` using the browser's locale-aware formatting.
+- Format: `as of {weekday}, {month} {day} {time} ET` -- always displayed in US Eastern time (market time) regardless of the user's local timezone.
 - When data is fresh (< 30 min old), the line is hidden to keep the UI clean during market hours.
 - When `updated_at` is null, no timestamp line is shown (the `--` score already signals missing data).
+- Future timestamps (clock skew) are treated as fresh (not aged).
 
 ### SectorPanel component
 
-The sector panel already receives `updated_at` from the scores API response (via the parent query). When data is aged, show the same "as of" timestamp in the domain header area, next to the domain name. Reuse the same formatting and threshold logic.
+**Bug fix (pre-existing)**: SectorPanel currently uses `queryKey: ["risk-scores"]` and fetches `/api/risk/scores` without the `framework` parameter. This means it always shows the default framework's scores regardless of the user's toggle selection. Fix: add `framework` to the query key and pass it as a query param, matching `CompositeScore`'s pattern.
+
+When data is aged, show the same "as of" timestamp in the domain header area, next to the domain name. Reuse the same formatting and threshold logic.
 
 ### Shared utility
 
 Extract a small helper into `src/lib/format-score-age.ts`:
 
-- `isScoreAged(updatedAt: string | null, thresholdMs?: number): boolean` -- returns true when the score timestamp is older than the threshold (default 30 min).
-- `formatScoreTimestamp(updatedAt: string): string` -- returns the "as of ..." display string.
+- `isScoreAged(updatedAt: string | null, thresholdMs?: number): boolean` -- returns true when the score timestamp is older than the threshold (default 30 min). Returns false for null or future timestamps.
+- `formatScoreTimestamp(updatedAt: string): string` -- returns the formatted display string in ET (e.g., "Fri, Mar 20 4:00 PM ET").
 
 This avoids duplicating the threshold constant and date formatting between CompositeScore and SectorPanel.
+
+### Assumptions and accepted limitations
+
+- **All-or-nothing scoring**: The scoring pipeline writes all domain scores in a single pass. The API's `updated_at` is the max timestamp across all score rows, which is a valid proxy for "when scoring last ran." If the pipeline ever produces partial scores, the single `updated_at` could be misleading -- but that would require a separate per-domain timestamp feature.
+- **Weekend refetch**: `CompositeScore` refetches every 30 seconds. On weekends this re-queries identical stale data. Not worth optimizing now.
 
 ### What does NOT change
 
@@ -56,9 +64,9 @@ This avoids duplicating the threshold constant and date formatting between Compo
 
 ### Unit tests
 
-- `format-score-age.test.ts`: Test `isScoreAged` with fresh, aged, and null timestamps. Test `formatScoreTimestamp` output format.
-- `composite-score.test.tsx`: Add test case for aged data rendering the "as of" line. Add test case for fresh data not rendering the "as of" line.
-- `sector-panel.test.tsx`: Add test case for aged data rendering the timestamp in domain header.
+- `format-score-age.test.ts`: Test `isScoreAged` with fresh, aged, null, and future timestamps. Test boundary (exactly 30 min). Test `formatScoreTimestamp` output format includes ET timezone.
+- `composite-score.test.tsx`: Add test case for aged data rendering the "as of" line. Add test case for fresh data not rendering the "as of" line. Test null `updated_at` shows no timestamp.
+- `sector-panel.test.tsx`: Add test case for aged data rendering the timestamp in domain header. Verify framework query key fix.
 
 ### Manual verification
 
@@ -75,9 +83,9 @@ This avoids duplicating the threshold constant and date formatting between Compo
 
 ## Files to modify
 
-| File                                                     | Change                                              |
-| -------------------------------------------------------- | --------------------------------------------------- |
-| `src/components/risk/composite-score.tsx`                | Render "as of" line when data is aged               |
-| `src/components/risk/sector-panel.tsx`                   | Render "as of" timestamp in domain header when aged |
-| `src/components/risk/__tests__/composite-score.test.tsx` | Add aged/fresh timestamp display tests              |
-| `src/components/risk/__tests__/sector-panel.test.tsx`    | Add aged timestamp display test                     |
+| File                                                     | Change                                                      |
+| -------------------------------------------------------- | ----------------------------------------------------------- |
+| `src/components/risk/composite-score.tsx`                | Render "as of" line when data is aged                       |
+| `src/components/risk/sector-panel.tsx`                   | Fix framework query key; render "as of" timestamp when aged |
+| `src/components/risk/__tests__/composite-score.test.tsx` | Add aged/fresh timestamp display tests                      |
+| `src/components/risk/__tests__/sector-panel.test.tsx`    | Add aged timestamp display test                             |
