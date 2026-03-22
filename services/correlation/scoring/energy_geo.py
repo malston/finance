@@ -153,7 +153,7 @@ def score_energy_geo(db_url: str, config: dict[str, Any]) -> float | None:
     try:
         # Crude oil level
         crude_ticker = components.get("crude_level", {}).get("ticker", "CL=F")
-        crude_value = fetch_latest_value(conn, crude_ticker)
+        crude_value = fetch_latest_value(conn, crude_ticker, max_age_hours=2)
 
         # Crude volatility (rolling std dev of daily returns)
         cv_cfg = components.get("crude_volatility", {})

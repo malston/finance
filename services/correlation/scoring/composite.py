@@ -96,7 +96,7 @@ def score_composite(db_url: str, config: dict[str, Any]) -> float | None:
         scores: dict[str, float] = {}
         for name, domain_config in domains.items():
             ticker = domain_config.get("ticker", f"SCORE_{name.upper()}")
-            value = fetch_latest_value(conn, ticker)
+            value = fetch_latest_value(conn, ticker, max_age_hours=2)
             if value is not None:
                 scores[name] = value
 

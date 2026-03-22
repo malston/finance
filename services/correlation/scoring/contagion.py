@@ -102,14 +102,14 @@ def score_contagion(db_url: str, config: dict[str, Any]) -> float | None:
         # Fetch pairwise correlations
         corr_values: dict[str, float | None] = {}
         for ticker in CORRELATION_TICKERS:
-            corr_values[ticker] = fetch_latest_value(conn, ticker)
+            corr_values[ticker] = fetch_latest_value(conn, ticker, max_age_hours=2)
 
         max_corr = select_max_pairwise_correlation(corr_values)
 
         # Fetch VIX (via VIXY ETF proxy)
         ct_config = config.get("scoring", {}).get("contagion", {})
         vix_ticker = ct_config.get("components", {}).get("vix_level", {}).get("ticker", "VIXY")
-        vix_value = fetch_latest_value(conn, vix_ticker)
+        vix_value = fetch_latest_value(conn, vix_ticker, max_age_hours=2)
 
         score = score_contagion_from_values(max_corr, vix_value, config)
 

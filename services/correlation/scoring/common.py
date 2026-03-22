@@ -93,14 +93,32 @@ def write_score(
 def fetch_latest_value(
     conn: psycopg2.extensions.connection,
     ticker: str,
+    max_age_hours: float | None = None,
 ) -> float | None:
-    """Fetch the most recent value for a ticker from time_series."""
-    with conn.cursor() as cur:
-        cur.execute(
+    """Fetch the most recent value for a ticker from time_series.
+
+    Args:
+        conn: Database connection.
+        ticker: The ticker symbol to look up.
+        max_age_hours: If provided, only consider rows newer than this many
+            hours ago. Returns None when all data is older than the cutoff.
+    """
+    if max_age_hours is not None:
+        query = (
+            "SELECT value FROM time_series "
+            "WHERE ticker = %s AND time > NOW() - INTERVAL '%s hours' "
+            "ORDER BY time DESC LIMIT 1"
+        )
+        params = (ticker, max_age_hours)
+    else:
+        query = (
             "SELECT value FROM time_series "
             "WHERE ticker = %s "
-            "ORDER BY time DESC LIMIT 1",
-            (ticker,),
+            "ORDER BY time DESC LIMIT 1"
         )
+        params = (ticker,)
+
+    with conn.cursor() as cur:
+        cur.execute(query, params)
         row = cur.fetchone()
     return row[0] if row else None

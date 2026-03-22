@@ -97,13 +97,13 @@ def score_ai_concentration(db_url: str, config: dict[str, Any]) -> float | None:
         spy_rsp_ticker = components.get("spy_rsp_deviation", {}).get(
             "ticker", "SPY_RSP_RATIO",
         )
-        spy_rsp_ratio = fetch_latest_value(conn, spy_rsp_ticker)
+        spy_rsp_ratio = fetch_latest_value(conn, spy_rsp_ticker, max_age_hours=2)
 
         smh_ticker = components.get("smh_relative", {}).get("ticker_a", "SMH")
-        smh_value = fetch_latest_value(conn, smh_ticker)
+        smh_value = fetch_latest_value(conn, smh_ticker, max_age_hours=2)
 
         spy_ticker = components.get("smh_relative", {}).get("ticker_b", "SPY")
-        spy_value = fetch_latest_value(conn, spy_ticker)
+        spy_value = fetch_latest_value(conn, spy_ticker, max_age_hours=2)
 
         score = score_ai_concentration_from_values(
             spy_rsp_ratio, smh_value, spy_value, config,

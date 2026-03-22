@@ -62,7 +62,7 @@ def score_private_credit(db_url: str, config: dict[str, Any]) -> float | None:
     try:
         # HY Spread level
         hy_config = components.get("hy_spread", {})
-        hy_value = fetch_latest_value(conn, hy_config.get("ticker", "BAMLH0A0HYM2"))
+        hy_value = fetch_latest_value(conn, hy_config.get("ticker", "BAMLH0A0HYM2"), max_age_hours=2)
         if hy_value is not None:
             sub_scores["hy_spread"] = linear_score(
                 hy_value, hy_config.get("min_value", 300), hy_config.get("max_value", 800),
@@ -70,7 +70,7 @@ def score_private_credit(db_url: str, config: dict[str, Any]) -> float | None:
 
         # BDC NAV discount (inverted scale)
         bdc_config = components.get("bdc_discount", {})
-        bdc_value = fetch_latest_value(conn, bdc_config.get("ticker", "BDC_AVG_NAV_DISCOUNT"))
+        bdc_value = fetch_latest_value(conn, bdc_config.get("ticker", "BDC_AVG_NAV_DISCOUNT"), max_age_hours=2)
         if bdc_value is not None:
             sub_scores["bdc_discount"] = inverted_linear_score(
                 bdc_value, bdc_config.get("min_value", 0), bdc_config.get("max_value", -0.20),
