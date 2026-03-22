@@ -48,11 +48,12 @@ scoring:
 
   energy_geo:
     weight: 0.25
+    min_components: 2
     components:
       crude_level:
         sub_weight: 0.30
         ticker: "CL=F"
-        min_value: 50
+        min_value: 30
         max_value: 120
       crude_volatility:
         sub_weight: 0.35

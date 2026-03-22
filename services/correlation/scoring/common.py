@@ -58,12 +58,18 @@ def compute_composite_score(
     components = config["components"]
     weighted_sum = 0.0
     total_weight = 0.0
+    count = 0
 
     for name, comp_config in components.items():
         if name in sub_scores:
             weight = comp_config["sub_weight"]
             weighted_sum += sub_scores[name] * weight
             total_weight += weight
+            count += 1
+
+    min_components = config.get("min_components")
+    if min_components is not None and count < min_components:
+        return None
 
     if total_weight == 0:
         return None

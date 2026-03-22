@@ -105,7 +105,7 @@ def score_energy_geo_from_values(
         cl_cfg = components.get("crude_level", {})
         sub_scores["crude_level"] = linear_score(
             crude_value,
-            cl_cfg.get("min_value", 50),
+            cl_cfg.get("min_value", 30),
             cl_cfg.get("max_value", 120),
         )
 
