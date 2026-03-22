@@ -3,10 +3,9 @@
  * Each term has two variants: one per analytical framework.
  * Displayed in tooltips for non-finance users.
  */
-export const JARGON_DEFINITIONS: Record<
-  string,
-  { bookstaber: string; yardeni: string }
-> = {
+import type { Framework } from "./framework-config";
+
+export const JARGON_DEFINITIONS: Record<string, Record<Framework, string>> = {
   "Pearson Correlation": {
     bookstaber:
       "Measures how risk domains move together. Above 0.5 signals contagion -- stress spreading across sectors through forced selling and margin calls.",

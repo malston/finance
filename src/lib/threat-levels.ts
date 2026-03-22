@@ -1,7 +1,11 @@
-import { FRAMEWORK_CONFIG, type Framework } from "./framework-config";
+import {
+  FRAMEWORK_CONFIG,
+  type Framework,
+  type ThreatLevelName,
+} from "./framework-config";
 
 export interface ThreatLevel {
-  level: "LOW" | "ELEVATED" | "HIGH" | "CRITICAL";
+  level: ThreatLevelName;
   color: string;
 }
 

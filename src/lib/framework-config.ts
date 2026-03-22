@@ -1,8 +1,10 @@
 export type Framework = "bookstaber" | "yardeni";
 
+export type ThreatLevelName = "LOW" | "ELEVATED" | "HIGH" | "CRITICAL";
+
 interface ThreatBand {
   readonly max: number;
-  readonly level: "LOW" | "ELEVATED" | "HIGH" | "CRITICAL";
+  readonly level: ThreatLevelName;
   readonly color: string;
 }
 
@@ -19,7 +21,7 @@ interface FrameworkSettings {
   readonly newsSortDirection: "asc" | "desc";
 }
 
-export const FRAMEWORK_CONFIG: Record<Framework, FrameworkSettings> = {
+export const FRAMEWORK_CONFIG = {
   bookstaber: {
     tickerPrefix: "",
     contagionThreshold: 0.5,
@@ -54,7 +56,7 @@ export const FRAMEWORK_CONFIG: Record<Framework, FrameworkSettings> = {
     ],
     newsSortDirection: "desc",
   },
-} as const;
+} as const satisfies Record<Framework, FrameworkSettings>;
 
 /**
  * Parses a framework query parameter, defaulting to "bookstaber" for

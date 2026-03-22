@@ -125,8 +125,8 @@ export function CorrelationChart() {
             Cross-Domain Correlation Monitor
           </div>
           <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>
-            BDC ↔ Big Tech 30-day rolling correlation — above 0.5 signals
-            contagion
+            BDC ↔ Big Tech 30-day rolling correlation — above{" "}
+            {contagionThreshold} signals contagion
           </div>
         </div>
         <div style={{ textAlign: "right" }}>

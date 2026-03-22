@@ -86,13 +86,14 @@ def score_contagion(db_url: str, config: dict[str, Any], ticker_prefix: str = ""
 
     Reads pairwise correlations and VIX from the time_series table,
     computes sub-component scores using configurable thresholds, writes
-    the result back as SCORE_CONTAGION, and returns the score.
+    the result back as {ticker_prefix}SCORE_CONTAGION, and returns the score.
 
     Returns None without writing to DB if no input data is available.
 
     Args:
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
+        ticker_prefix: Prepended to the output ticker name (default: "").
 
     Returns:
         The computed score (0-100), or None if no data is available.

@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
-// Will be created at src/lib/framework-context.tsx
 import { FrameworkProvider, useFramework } from "@/lib/framework-context";
 
 function TestConsumer() {

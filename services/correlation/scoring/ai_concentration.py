@@ -78,13 +78,14 @@ def score_ai_concentration(db_url: str, config: dict[str, Any], ticker_prefix: s
 
     Reads SPY_RSP_RATIO, SMH, and SPY from the time_series table, computes 3
     sub-component scores using configurable thresholds, writes the result back
-    as SCORE_AI_CONCENTRATION, and returns the score.
+    as {ticker_prefix}SCORE_AI_CONCENTRATION, and returns the score.
 
     Returns None without writing to DB if no input data is available.
 
     Args:
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
+        ticker_prefix: Prepended to the output ticker name (default: "").
 
     Returns:
         The computed score (0-100), or None if no data is available.

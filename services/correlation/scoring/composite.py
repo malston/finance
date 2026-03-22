@@ -79,13 +79,14 @@ def score_composite(db_url: str, config: dict[str, Any], ticker_prefix: str = ""
 
     Reads the latest value for each domain score ticker, computes the weighted
     average with renormalization for missing domains, writes the result as
-    SCORE_COMPOSITE, and returns the score.
+    {ticker_prefix}SCORE_COMPOSITE, and returns the score.
 
     Returns None without writing to DB if no domain scores are available.
 
     Args:
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
+        ticker_prefix: Prepended to the output ticker name (default: "").
 
     Returns:
         The computed composite score (0-100), or None if no data is available.

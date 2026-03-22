@@ -10,8 +10,12 @@ const FrameworkContext = createContext<{
 
 function readStoredFramework(): Framework {
   if (typeof window === "undefined") return "bookstaber";
-  const stored = window.localStorage.getItem("risk-framework");
-  if (stored === "bookstaber" || stored === "yardeni") return stored;
+  try {
+    const stored = window.localStorage.getItem("risk-framework");
+    if (stored === "bookstaber" || stored === "yardeni") return stored;
+  } catch {
+    // localStorage unavailable (private browsing, security policy, etc.)
+  }
   return "bookstaber";
 }
 
@@ -19,7 +23,11 @@ export function FrameworkProvider({ children }: { children: React.ReactNode }) {
   const [framework, setFramework] = useState<Framework>(readStoredFramework);
 
   useEffect(() => {
-    window.localStorage.setItem("risk-framework", framework);
+    try {
+      window.localStorage.setItem("risk-framework", framework);
+    } catch {
+      // Persistence unavailable; framework selection works for this session only
+    }
   }, [framework]);
 
   return (
