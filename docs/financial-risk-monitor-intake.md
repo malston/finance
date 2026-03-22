@@ -20,7 +20,7 @@ Poll financial data from multiple sources on tiered schedules, optimized for cos
 
 - **Finnhub** (free tier, 60 calls/min) — real-time price feeds for all tracked equities, ETFs, and volatility indices: OWL, ARCC, BXSL, OBDC, NVDA, MSFT, GOOGL, META, AMZN, SMH, SPY, RSP, HYG, XLU, EWT, VIX, MOVE, SKEW
 - **Finnhub websocket** — streaming updates for high-priority tickers during market hours: VIX, CL=F, NG=F
-- **FRED API** (free, no key required) — credit spreads (ICE BofA HY OAS: `BAMLH0A0HYM2`), Treasury yields. FRED updates daily so poll once per day.
+- **FRED API** (free with api key) — credit spreads (ICE BofA HY OAS: `BAMLH0A0HYM2`), Treasury yields. FRED updates daily so poll once per day.
 
 **Low-frequency (hourly or daily) — Valyu API for high-value search and analysis:**
 
