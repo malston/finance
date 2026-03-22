@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
 
 # next.js
 /.next/
@@ -66,3 +68,10 @@ __pycache__/
 .vault/.vlt.lock
 .vault/.guard/
 .vault/.nd-shared.yaml
+
+# Claude
+**/CLAUDE.md
+!.claude/CLAUDE.md
+!/CLAUDE.md
+.claude/*.local.md
+settings.local.json

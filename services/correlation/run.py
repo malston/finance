@@ -8,6 +8,7 @@ import os
 import signal
 import sys
 import threading
+from typing import Any, Callable
 
 import psycopg2
 
@@ -28,6 +29,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("correlation")
 
+_SCORERS: list[tuple[Callable[..., float | None], str]] = [
+    (score_private_credit, "Private credit"),
+    (score_ai_concentration, "AI concentration"),
+    (score_energy_geo, "Energy/geo"),
+    (score_contagion, "Contagion"),
+    (score_composite, "Composite"),
+]
+
 
 shutdown_event = threading.Event()
 
@@ -35,6 +44,31 @@ shutdown_event = threading.Event()
 def _handle_shutdown(signum, frame):
     logger.info("Received signal %d, shutting down gracefully", signum)
     shutdown_event.set()
+
+
+def _run_scoring_pass(
+    db_url: str,
+    config: dict[str, Any],
+    label: str,
+    ticker_prefix: str = "",
+) -> None:
+    """Run all 5 scorers with the given config and ticker prefix.
+
+    Each scorer runs in its own try/except so a failure in one does not
+    prevent the others from executing.
+    """
+    for scorer_fn, name in _SCORERS:
+        try:
+            score = scorer_fn(db_url, config, ticker_prefix=ticker_prefix)
+            if score is not None:
+                logger.info("%s %s score: %.2f", label, name.lower(), score)
+            else:
+                logger.warning(
+                    "%s %s score: skipped (insufficient data)",
+                    label, name.lower(),
+                )
+        except Exception:
+            logger.exception("%s %s scoring failed", label, name.lower())
 
 
 def main() -> None:
@@ -45,6 +79,16 @@ def main() -> None:
 
     interval = int(os.environ.get("COMPUTE_INTERVAL_SECONDS", "300"))
     scoring_config = load_scoring_config()
+
+    yardeni_config_path = os.path.join(os.path.dirname(__file__), "scoring_config_yardeni.yaml")
+    try:
+        yardeni_config: dict[str, Any] | None = load_scoring_config(yardeni_config_path)
+    except Exception:
+        logger.exception(
+            "Failed to load Yardeni scoring config from %s; Yardeni scoring disabled",
+            yardeni_config_path,
+        )
+        yardeni_config = None
 
     alert_config_path = os.path.join(os.path.dirname(__file__), "alert_config.yaml")
     alert_config = load_alert_config(alert_config_path)
@@ -64,50 +108,10 @@ def main() -> None:
         except Exception:
             logger.exception("Correlation computation failed")
 
-        try:
-            pc_score = score_private_credit(db_url, scoring_config)
-            if pc_score is not None:
-                logger.info("Private credit score: %.2f", pc_score)
-            else:
-                logger.warning("Private credit score: skipped (insufficient data)")
-        except Exception:
-            logger.exception("Private credit scoring failed")
+        _run_scoring_pass(db_url, scoring_config, "Bookstaber")
 
-        try:
-            ai_score = score_ai_concentration(db_url, scoring_config)
-            if ai_score is not None:
-                logger.info("AI concentration score: %.2f", ai_score)
-            else:
-                logger.warning("AI concentration score: skipped (insufficient data)")
-        except Exception:
-            logger.exception("AI concentration scoring failed")
-
-        try:
-            eg_score = score_energy_geo(db_url, scoring_config)
-            if eg_score is not None:
-                logger.info("Energy/geo score: %.2f", eg_score)
-            else:
-                logger.warning("Energy/geo score: skipped (insufficient data)")
-        except Exception:
-            logger.exception("Energy/geo scoring failed")
-
-        try:
-            contagion_score = score_contagion(db_url, scoring_config)
-            if contagion_score is not None:
-                logger.info("Contagion score: %.2f", contagion_score)
-            else:
-                logger.warning("Contagion score: skipped (insufficient data)")
-        except Exception:
-            logger.exception("Contagion scoring failed")
-
-        try:
-            composite_score = score_composite(db_url, scoring_config)
-            if composite_score is not None:
-                logger.info("Composite score: %.2f", composite_score)
-            else:
-                logger.warning("Composite score: skipped (insufficient data)")
-        except Exception:
-            logger.exception("Composite scoring failed")
+        if yardeni_config is not None:
+            _run_scoring_pass(db_url, yardeni_config, "Yardeni", ticker_prefix="YARDENI_")
 
         try:
             fired = evaluate_rules(db_url, alert_config)

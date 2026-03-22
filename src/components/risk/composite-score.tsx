@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { C } from "@/lib/theme";
+import { useFramework } from "@/lib/framework-context";
 
 interface CompositeData {
   score: number | null;
@@ -39,10 +40,11 @@ const DOMAIN_ORDER = [
 ];
 
 export function CompositeScore() {
+  const { framework } = useFramework();
   const { data, isLoading, isError } = useQuery<ScoresResponse>({
-    queryKey: ["risk-scores"],
+    queryKey: ["risk-scores", framework],
     queryFn: async () => {
-      const res = await fetch("/api/risk/scores");
+      const res = await fetch(`/api/risk/scores?framework=${framework}`);
       if (!res.ok) throw new Error("Failed to fetch risk scores");
       return res.json();
     },

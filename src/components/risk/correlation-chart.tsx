@@ -12,9 +12,8 @@ import {
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { C } from "@/lib/theme";
-
-const CONTAGION_THRESHOLD = 0.5;
-const FETCH_URL = "/api/risk/correlations?days=79";
+import { useFramework } from "@/lib/framework-context";
+import { FRAMEWORK_CONFIG } from "@/lib/framework-config";
 
 interface CorrelationPoint {
   time: string;
@@ -44,10 +43,18 @@ function formatTooltipValue(value: number): string {
 }
 
 export function CorrelationChart() {
+  const { framework } = useFramework();
+  const config = FRAMEWORK_CONFIG[framework];
+  const contagionThreshold = config.contagionThreshold;
+  const thresholdLabel =
+    framework === "yardeni" ? "EXTREME CORRELATION" : "CONTAGION THRESHOLD";
+
   const { data, isLoading, isError } = useQuery<CorrelationResponse>({
-    queryKey: ["correlations"],
+    queryKey: ["correlations", framework],
     queryFn: async () => {
-      const response = await fetch(FETCH_URL);
+      const response = await fetch(
+        `/api/risk/correlations?days=79&framework=${framework}`,
+      );
       if (!response.ok) throw new Error("Failed to fetch correlations");
       return response.json();
     },
@@ -118,8 +125,11 @@ export function CorrelationChart() {
             Cross-Domain Correlation Monitor
           </div>
           <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>
-            BDC ↔ Big Tech 30-day rolling correlation — above 0.5 signals
-            contagion
+            BDC ↔ Big Tech 30-day rolling correlation — above{" "}
+            {contagionThreshold}{" "}
+            {framework === "yardeni"
+              ? "signals extreme correlation"
+              : "signals contagion"}
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
@@ -228,7 +238,7 @@ export function CorrelationChart() {
                 axisLine={false}
               />
               <ReferenceLine
-                y={CONTAGION_THRESHOLD}
+                y={contagionThreshold}
                 stroke={C.red}
                 strokeDasharray="4 4"
                 label={({
@@ -244,7 +254,7 @@ export function CorrelationChart() {
                     fontSize={8}
                     textAnchor="end"
                   >
-                    CONTAGION THRESHOLD
+                    {thresholdLabel}
                   </text>
                 )}
               />

@@ -2,7 +2,7 @@
 
 Computes a 0-100 stress score from HY spread levels, BDC NAV discounts,
 redemption flow proxy, and spread rate of change. Reads inputs from
-TimescaleDB and writes the result back as SCORE_PRIVATE_CREDIT.
+TimescaleDB and writes the result back with an optional ticker prefix.
 """
 
 import logging
@@ -40,16 +40,18 @@ def _fetch_value_days_ago(
     return row[0] if row else None
 
 
-def score_private_credit(db_url: str, config: dict[str, Any]) -> float | None:
+def score_private_credit(db_url: str, config: dict[str, Any], ticker_prefix: str = "") -> float | None:
     """Compute Private Credit Stress score and write it to TimescaleDB.
 
     Reads current market data from the time_series table, computes 4
     sub-component scores using configurable thresholds, writes the result
-    back to time_series as SCORE_PRIVATE_CREDIT, and returns the score.
+    back to time_series as {ticker_prefix}SCORE_PRIVATE_CREDIT, and returns
+    the score.
 
     Args:
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
+        ticker_prefix: Prepended to the output ticker name (default: "").
 
     Returns:
         The computed score (0-100).
@@ -97,7 +99,7 @@ def score_private_credit(db_url: str, config: dict[str, Any]) -> float | None:
             logger.warning("Private Credit: no input data available, skipping score write")
             return None
 
-        write_score(conn, "SCORE_PRIVATE_CREDIT", score)
+        write_score(conn, f"{ticker_prefix}SCORE_PRIVATE_CREDIT", score)
     finally:
         conn.close()
 

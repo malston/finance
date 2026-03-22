@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { queryLatestPrices } from "@/lib/timescaledb";
 import { getThreatLevel } from "@/lib/threat-levels";
+import { FRAMEWORK_CONFIG, parseFramework } from "@/lib/framework-config";
 
-const DOMAIN_TICKERS = [
+const BASE_DOMAIN_TICKERS = [
   "SCORE_PRIVATE_CREDIT",
   "SCORE_AI_CONCENTRATION",
   "SCORE_ENERGY_GEO",
@@ -10,26 +11,36 @@ const DOMAIN_TICKERS = [
   "SCORE_COMPOSITE",
 ] as const;
 
-const DOMAIN_WEIGHTS: Record<string, { key: string; weight: number }> = {
-  SCORE_PRIVATE_CREDIT: { key: "private_credit", weight: 0.3 },
-  SCORE_AI_CONCENTRATION: { key: "ai_concentration", weight: 0.2 },
-  SCORE_ENERGY_GEO: { key: "energy_geo", weight: 0.25 },
-  SCORE_CONTAGION: { key: "contagion", weight: 0.25 },
+const TICKER_TO_DOMAIN_KEY: Record<string, string> = {
+  SCORE_PRIVATE_CREDIT: "private_credit",
+  SCORE_AI_CONCENTRATION: "ai_concentration",
+  SCORE_ENERGY_GEO: "energy_geo",
+  SCORE_CONTAGION: "contagion",
 };
 
-export async function GET(_request: Request): Promise<Response> {
+export async function GET(request: Request): Promise<Response> {
   try {
-    const rows = await queryLatestPrices([...DOMAIN_TICKERS]);
+    const url = new URL(request.url);
+    const framework = parseFramework(url.searchParams.get("framework"));
+    const config = FRAMEWORK_CONFIG[framework];
+
+    const tickers = BASE_DOMAIN_TICKERS.map(
+      (t) => `${config.tickerPrefix}${t}`,
+    );
+    const rows = await queryLatestPrices(tickers);
 
     const byTicker: Record<string, { value: number; time: string }> = {};
     for (const row of rows) {
       byTicker[row.ticker] = { value: row.value, time: row.time };
     }
 
-    const compositeRow = byTicker["SCORE_COMPOSITE"];
+    const compositeTicker = `${config.tickerPrefix}SCORE_COMPOSITE`;
+    const compositeRow = byTicker[compositeTicker];
     const compositeScore = compositeRow?.value ?? null;
     const compositeLevel =
-      compositeScore !== null ? getThreatLevel(compositeScore) : null;
+      compositeScore !== null
+        ? getThreatLevel(compositeScore, framework)
+        : null;
 
     const domains: Record<
       string,
@@ -41,13 +52,19 @@ export async function GET(_request: Request): Promise<Response> {
       }
     > = {};
 
-    for (const [ticker, meta] of Object.entries(DOMAIN_WEIGHTS)) {
-      const row = byTicker[ticker];
+    for (const baseTicker of BASE_DOMAIN_TICKERS) {
+      const domainKey = TICKER_TO_DOMAIN_KEY[baseTicker];
+      if (!domainKey) continue;
+
+      const prefixedTicker = `${config.tickerPrefix}${baseTicker}`;
+      const row = byTicker[prefixedTicker];
       const score = row?.value ?? null;
-      const threatLevel = score !== null ? getThreatLevel(score) : null;
-      domains[meta.key] = {
+      const threatLevel =
+        score !== null ? getThreatLevel(score, framework) : null;
+      const weight = config.weights[domainKey as keyof typeof config.weights];
+      domains[domainKey] = {
         score,
-        weight: meta.weight,
+        weight,
         level: threatLevel?.level ?? null,
         color: threatLevel?.color ?? null,
       };
@@ -69,6 +86,7 @@ export async function GET(_request: Request): Promise<Response> {
       },
       domains,
       updated_at: updatedAt,
+      framework,
     };
 
     if (compositeScore === null) {

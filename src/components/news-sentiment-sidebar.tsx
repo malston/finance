@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { C } from "@/lib/theme";
+import { useFramework } from "@/lib/framework-context";
+import type { Framework } from "@/lib/framework-config";
 import {
   DOMAINS,
   sentimentBgColor,
@@ -27,13 +29,18 @@ interface TimeSeriesRow {
   source: string;
 }
 
-async function fetchAllNews(): Promise<Record<string, NewsHeadline[]>> {
+async function fetchAllNews(
+  framework: Framework,
+): Promise<Record<string, NewsHeadline[]>> {
   const results = await Promise.all(
     DOMAINS.map(async (d) => {
-      const res = await fetch(`/api/risk/news?domain=${d.key}&limit=20`);
+      const res = await fetch(
+        `/api/risk/news?domain=${d.key}&limit=20&framework=${framework}`,
+      );
       if (!res.ok)
         throw new Error(`News fetch failed for ${d.key}: ${res.status}`);
-      const data: NewsHeadline[] = await res.json();
+      const json = await res.json();
+      const data: NewsHeadline[] = json.items ?? json;
       return [d.key, data] as const;
     }),
   );
@@ -68,12 +75,13 @@ async function fetchAllSentiments(): Promise<Record<string, number | null>> {
 
 export function NewsSentimentSidebar() {
   const [activeDomain, setActiveDomain] = useState(0);
+  const { framework } = useFramework();
 
   const { data: headlines, isError: isHeadlinesError } = useQuery<
     Record<string, NewsHeadline[]>
   >({
-    queryKey: ["news-headlines"],
-    queryFn: fetchAllNews,
+    queryKey: ["news-headlines", framework],
+    queryFn: () => fetchAllNews(framework),
     refetchInterval: 60_000,
     staleTime: 55_000,
   });

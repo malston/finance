@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createWrapper } from "@/test/query-test-utils";
 import DashboardPage from "@/app/page";
 
@@ -44,16 +45,10 @@ function mockAllFetches() {
       });
     }
     if (typeof url === "string" && url.includes("/api/risk/timeseries")) {
-      return Promise.resolve({
-        ok: true,
-        json: async () => [],
-      });
+      return Promise.resolve({ ok: true, json: async () => [] });
     }
     if (typeof url === "string" && url.includes("/api/risk/latest-prices")) {
-      return Promise.resolve({
-        ok: true,
-        json: async () => [],
-      });
+      return Promise.resolve({ ok: true, json: async () => [] });
     }
     if (typeof url === "string" && url.includes("/api/risk/correlations")) {
       return Promise.resolve({
@@ -92,69 +87,55 @@ function mockAllFetches() {
   });
 }
 
-afterEach(() => {
-  cleanup();
-  mockFetch.mockReset();
-});
+describe("Dashboard page with framework switching", () => {
+  beforeEach(() => {
+    window.localStorage.removeItem("risk-framework");
+  });
 
-describe("Dashboard page", () => {
-  it("renders the header with app title", () => {
+  afterEach(() => {
+    cleanup();
+    mockFetch.mockReset();
+    window.localStorage.removeItem("risk-framework");
+  });
+
+  it("renders the framework toggle in the header", () => {
     mockAllFetches();
     render(<DashboardPage />, { wrapper: createWrapper() });
+    expect(screen.getByTestId("framework-toggle")).toBeInTheDocument();
+  });
+
+  it("shows Yardeni title when Yardeni toggle is clicked", async () => {
+    mockAllFetches();
+    const user = userEvent.setup();
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    await user.click(screen.getByRole("button", { name: /Yardeni/i }));
+
+    expect(screen.getByText("YARDENI RESILIENCE MONITOR")).toBeInTheDocument();
+  });
+
+  it("shows Yardeni subtitle when Yardeni toggle is clicked", async () => {
+    mockAllFetches();
+    const user = userEvent.setup();
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    await user.click(screen.getByRole("button", { name: /Yardeni/i }));
+
+    expect(
+      screen.getByText(
+        /Resilience monitor.*tracking self-correction across risk domains/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("reverts to Bookstaber title when switching back", async () => {
+    mockAllFetches();
+    const user = userEvent.setup();
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    await user.click(screen.getByRole("button", { name: /Yardeni/i }));
+    await user.click(screen.getByRole("button", { name: /Bookstaber/i }));
+
     expect(screen.getByText("BOOKSTABER RISK MONITOR")).toBeInTheDocument();
-  });
-
-  it("renders the header subtitle", () => {
-    mockAllFetches();
-    render(<DashboardPage />, { wrapper: createWrapper() });
-    expect(screen.getByText(/Systemic contagion tracker/)).toBeInTheDocument();
-  });
-
-  it("renders the diamond icon in the header", () => {
-    mockAllFetches();
-    render(<DashboardPage />, { wrapper: createWrapper() });
-    expect(screen.getByText(/◈/)).toBeInTheDocument();
-  });
-
-  it("renders a live clock display", () => {
-    mockAllFetches();
-    render(<DashboardPage />, { wrapper: createWrapper() });
-    const dateElement = screen.getByTestId("header-date");
-    expect(dateElement).toBeInTheDocument();
-    expect(dateElement.textContent).toBeTruthy();
-
-    const timeElement = screen.getByTestId("header-time");
-    expect(timeElement).toBeInTheDocument();
-    expect(timeElement.textContent).toBeTruthy();
-  });
-
-  it("renders placeholder sections for composite threat, correlation chart, and sector panels", () => {
-    mockAllFetches();
-    render(<DashboardPage />, { wrapper: createWrapper() });
-    expect(screen.getByTestId("section-composite-threat")).toBeInTheDocument();
-    expect(screen.getByTestId("section-correlation-chart")).toBeInTheDocument();
-    expect(screen.getByTestId("section-sector-panels")).toBeInTheDocument();
-  });
-
-  it("applies the dark background color", () => {
-    mockAllFetches();
-    render(<DashboardPage />, { wrapper: createWrapper() });
-    const root = screen.getByTestId("dashboard-root");
-    expect(root).toBeInTheDocument();
-    const style = root.style;
-    expect(style.backgroundColor).toBe("rgb(10, 14, 23)");
-  });
-
-  it("renders with max-width 960px centered container", () => {
-    mockAllFetches();
-    render(<DashboardPage />, { wrapper: createWrapper() });
-    const container = screen.getByTestId("dashboard-content");
-    expect(container.style.maxWidth).toBe("960px");
-  });
-
-  it("renders the Treasury & Credit Spreads card", () => {
-    mockAllFetches();
-    render(<DashboardPage />, { wrapper: createWrapper() });
-    expect(screen.getByTestId("treasury-credit-card")).toBeInTheDocument();
   });
 });

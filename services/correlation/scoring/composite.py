@@ -74,18 +74,19 @@ def compute_composite_from_values(
     return round(max(0.0, min(100.0, composite)), 2)
 
 
-def score_composite(db_url: str, config: dict[str, Any]) -> float | None:
+def score_composite(db_url: str, config: dict[str, Any], ticker_prefix: str = "") -> float | None:
     """Compute composite threat score and write it to TimescaleDB.
 
     Reads the latest value for each domain score ticker, computes the weighted
     average with renormalization for missing domains, writes the result as
-    SCORE_COMPOSITE, and returns the score.
+    {ticker_prefix}SCORE_COMPOSITE, and returns the score.
 
     Returns None without writing to DB if no domain scores are available.
 
     Args:
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
+        ticker_prefix: Prepended to the output ticker name (default: "").
 
     Returns:
         The computed composite score (0-100), or None if no data is available.
@@ -106,7 +107,7 @@ def score_composite(db_url: str, config: dict[str, Any]) -> float | None:
             logger.warning("Composite: no domain scores available, skipping score write")
             return None
 
-        write_score(conn, "SCORE_COMPOSITE", composite)
+        write_score(conn, f"{ticker_prefix}SCORE_COMPOSITE", composite)
 
         level, color = get_threat_level(composite, config)
         logger.info(

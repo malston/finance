@@ -1,0 +1,131 @@
+# Yardeni Resilience Framework — Scoring Configuration
+#
+# Based on Ed Yardeni's "Roaring 2020s" thesis:
+# - Economy is structurally resilient despite geopolitical shocks
+# - Baby boomer wealth ($85T net worth) provides consumer spending floor
+# - US energy independence blunts oil shock transmission
+# - Distressed asset funds and bank substitution provide credit market self-healing
+# - Geopolitical crises historically create buying opportunities, not systemic collapse
+# - Productivity gains from AI/tech revolution compound over time
+#
+# Key differences from Bookstaber framework:
+# - Higher thresholds before scoring "stress" (wider bands reflect historical resilience)
+# - Lower weight on contagion (markets have learned to buy the dip)
+# - Higher weight on energy/geo (physical shocks are real but self-correcting)
+# - Private credit stress is dampened (retail panic ≠ systemic crisis)
+# - Threat levels shifted: what Bookstaber calls CRITICAL, Yardeni calls HIGH
+
+scoring:
+  private_credit:
+    weight: 0.25 # Reduced from 0.30 — Yardeni sees private credit as contained
+    components:
+      hy_spread:
+        sub_weight: 0.30 # Slightly lower — spreads widen and narrow cyclically
+        ticker: BAMLH0A0HYM2
+        min_value: 350 # Higher floor — 350bps is normal in Yardeni's framework
+        max_value: 800 # Same ceiling — 800bps is genuinely distressed
+      bdc_discount:
+        sub_weight: 0.20 # Lower — BDC discounts reflect retail panic, not fundamentals
+        ticker: BDC_AVG_NAV_DISCOUNT
+        min_value: 0
+        max_value: -0.25 # Wider band — 25% discount before max stress (vs 20%)
+      redemption_flow:
+        sub_weight: 0.15
+        ticker: BDC_VOLUME_PROXY
+        min_value: 1.0
+        max_value: 3.5 # Higher ceiling — Yardeni expects distressed funds absorb outflows
+        placeholder: 35 # Lower default — assumes baseline is calmer
+      spread_roc:
+        sub_weight: 0.35 # Higher — rate of change matters more than level in resilient markets
+        ticker: BAMLH0A0HYM2
+        min_value: 0
+        max_value: 75 # Wider band — fast spread widening is what actually matters
+        lookback_days: 5
+
+  ai_concentration:
+    weight: 0.20 # Same as Bookstaber — concentration risk is concentration risk
+    components:
+      spy_rsp_deviation:
+        sub_weight: 0.35
+        ticker: SPY_RSP_RATIO
+        sma_days: 200
+        min_deviation: 0
+        max_deviation: 0.20 # Wider band — Yardeni sees S&P 10k by 2029, concentration is the path there
+      smh_relative:
+        sub_weight: 0.30
+        ticker_a: SMH
+        ticker_b: SPY
+        min_value: 0
+        max_value: 0.25 # Wider — semiconductor outperformance is structural, not just frothy
+      top10_weight:
+        sub_weight: 0.35
+        ticker: SPY_RSP_RATIO
+        min_value: 1.6 # Higher floor — some concentration is the new normal
+        max_value: 3.0 # Higher ceiling — takes more to alarm Yardeni
+
+  energy_geo:
+    weight: 0.30 # INCREASED from 0.25 — Yardeni takes geopolitics seriously but sees self-correction
+    min_components: 2
+    components:
+      crude_level:
+        sub_weight: 0.25 # Lower — US energy independence blunts price transmission
+        ticker: "CL=F"
+        min_value: 50 # Higher floor — $50 oil is not a concern for energy-independent US
+        max_value: 140 # Higher ceiling — Yardeni saw $120 spike and settle, takes more to panic
+      crude_volatility:
+        sub_weight: 0.40 # Higher — volatility matters more than level (spikes settle)
+        ticker: "CL=F"
+        lookback_days: 30
+        min_value: 0.20 # Higher floor — some vol is normal in wartime
+        max_value: 0.60 # Higher ceiling — Yardeni expects spikes to be transient
+      ewt_drawdown:
+        sub_weight: 0.35
+        ticker: EWT
+        lookback_days: 252
+        min_value: 0
+        max_value: -0.30 # Wider band — Taiwan risk is priced more gradually
+
+  contagion:
+    weight: 0.25 # Same nominal weight, but thresholds are much wider
+    components:
+      max_correlation:
+        sub_weight: 0.50 # Lower than Bookstaber's 0.60 — correlation spikes are normal in selloffs
+        min_value: 0.2 # Higher floor — some correlation is baseline
+        max_value: 0.85 # MUCH higher ceiling — Yardeni doesn't panic until extreme levels
+      vix_level:
+        sub_weight: 0.50 # Higher than Bookstaber's 0.40 — VIX is the cleaner fear signal
+        ticker: VIXY
+        min_value: 18 # Higher floor — sub-18 VIX is complacent, not "safe"
+        max_value: 50 # Higher ceiling — VIX hit 40+ in 2020 and markets recovered
+
+  composite:
+    domains:
+      private_credit:
+        ticker: YARDENI_SCORE_PRIVATE_CREDIT
+        weight: 0.25 # Reduced from 0.30
+      ai_concentration:
+        ticker: YARDENI_SCORE_AI_CONCENTRATION
+        weight: 0.20 # Same
+      energy_geo:
+        ticker: YARDENI_SCORE_ENERGY_GEO
+        weight: 0.30 # Increased from 0.25
+      contagion:
+        ticker: YARDENI_SCORE_CONTAGION
+        weight: 0.25 # Same
+
+    # Shifted threat levels — Yardeni's bands are wider
+    # What Bookstaber calls CRITICAL at 76, Yardeni calls HIGH
+    # Yardeni only hits CRITICAL when multiple domains are simultaneously maxed
+    threat_levels:
+      - max_score: 30
+        level: LOW
+        color: "#22c55e"
+      - max_score: 55
+        level: ELEVATED
+        color: "#eab308"
+      - max_score: 80
+        level: HIGH
+        color: "#f97316"
+      - max_score: 100
+        level: CRITICAL
+        color: "#ef4444"

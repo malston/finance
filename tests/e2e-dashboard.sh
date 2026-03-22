@@ -407,11 +407,14 @@ for domain in private_credit ai_concentration energy_geo contagion; do
         echo "FAIL: /api/risk/news?domain=${domain} returned empty response" >&2
         exit 1
     fi
-    NEWS_LEN=$(echo "${NEWS_RESPONSE}" | jq 'length')
+    NEWS_LEN=$(echo "${NEWS_RESPONSE}" | jq '.items | length')
     assert_gte "News for ${domain}" 1 "${NEWS_LEN}"
 
-    HAS_FIELDS=$(echo "${NEWS_RESPONSE}" | jq '.[0] | has("headline") and has("sentiment")')
+    HAS_FIELDS=$(echo "${NEWS_RESPONSE}" | jq '.items[0] | has("headline") and has("sentiment")')
     assert_eq "News entry for ${domain} has required fields" "true" "${HAS_FIELDS}"
+
+    HAS_FRAMEWORK=$(echo "${NEWS_RESPONSE}" | jq 'has("framework")')
+    assert_eq "News response for ${domain} has framework field" "true" "${HAS_FRAMEWORK}"
 done
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { queryNewsSentiment } from "@/lib/timescaledb";
+import { FRAMEWORK_CONFIG, parseFramework } from "@/lib/framework-config";
 
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -12,6 +13,9 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
+  const framework = parseFramework(url.searchParams.get("framework"));
+  const config = FRAMEWORK_CONFIG[framework];
+
   const limitParam = url.searchParams.get("limit");
   let limit = 10;
   if (limitParam !== null) {
@@ -23,7 +27,16 @@ export async function GET(request: Request): Promise<Response> {
 
   try {
     const rows = await queryNewsSentiment(domain, limit);
-    return NextResponse.json(rows);
+
+    // Sort by sentiment: ascending for risk-focused (bookstaber),
+    // descending for resilience-focused (yardeni)
+    const sorted = [...rows].sort((a, b) => {
+      return config.newsSortDirection === "asc"
+        ? a.sentiment - b.sentiment
+        : b.sentiment - a.sentiment;
+    });
+
+    return NextResponse.json({ items: sorted, framework });
   } catch (err) {
     console.error("[/api/risk/news]", err);
     return NextResponse.json(

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { JARGON_DEFINITIONS } from "@/lib/jargon";
+import { useFramework } from "@/lib/framework-context";
 
 interface JargonTooltipProps {
   term: string;
@@ -10,12 +11,14 @@ interface JargonTooltipProps {
 
 /**
  * Wraps a financial term with a hover tooltip showing a plain-language definition.
- * Uses the JARGON_DEFINITIONS map for content. If no definition exists for the term,
- * renders the text without tooltip behavior.
+ * Selects the definition variant matching the active analytical framework.
+ * If no definition exists for the term, renders the text without tooltip behavior.
  */
 export function JargonTooltip({ term, children }: JargonTooltipProps) {
   const [hovered, setHovered] = useState(false);
-  const definition = JARGON_DEFINITIONS[term];
+  const { framework } = useFramework();
+  const definitions = JARGON_DEFINITIONS[term];
+  const definition = definitions?.[framework];
   const displayText = children ?? term;
 
   if (!definition) {

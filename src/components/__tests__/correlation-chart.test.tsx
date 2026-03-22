@@ -178,7 +178,7 @@ describe("CorrelationChart", () => {
     });
   });
 
-  it("fetches data from /api/risk/correlations?days=79", async () => {
+  it("fetches data from /api/risk/correlations with framework param", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => SAMPLE_CORRELATION_DATA,
@@ -191,7 +191,9 @@ describe("CorrelationChart", () => {
     });
 
     const calledUrl = mockFetch.mock.calls[0][0];
-    expect(calledUrl).toBe("/api/risk/correlations?days=79");
+    expect(calledUrl).toBe(
+      "/api/risk/correlations?days=79&framework=bookstaber",
+    );
   });
 
   it("auto-refreshes data every 60 seconds", async () => {

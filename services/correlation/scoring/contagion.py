@@ -81,18 +81,19 @@ def score_contagion_from_values(
     return compute_composite_score(sub_scores, ct_config)
 
 
-def score_contagion(db_url: str, config: dict[str, Any]) -> float | None:
+def score_contagion(db_url: str, config: dict[str, Any], ticker_prefix: str = "") -> float | None:
     """Compute Cross-Domain Contagion score and write it to TimescaleDB.
 
     Reads pairwise correlations and VIX from the time_series table,
     computes sub-component scores using configurable thresholds, writes
-    the result back as SCORE_CONTAGION, and returns the score.
+    the result back as {ticker_prefix}SCORE_CONTAGION, and returns the score.
 
     Returns None without writing to DB if no input data is available.
 
     Args:
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
+        ticker_prefix: Prepended to the output ticker name (default: "").
 
     Returns:
         The computed score (0-100), or None if no data is available.
@@ -117,7 +118,7 @@ def score_contagion(db_url: str, config: dict[str, Any]) -> float | None:
             logger.warning("Contagion: no input data available, skipping score write")
             return None
 
-        write_score(conn, "SCORE_CONTAGION", score)
+        write_score(conn, f"{ticker_prefix}SCORE_CONTAGION", score)
     finally:
         conn.close()
 
