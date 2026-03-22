@@ -66,31 +66,46 @@ def main() -> None:
 
         try:
             pc_score = score_private_credit(db_url, scoring_config)
-            logger.info("Private credit score: %.2f", pc_score)
+            if pc_score is not None:
+                logger.info("Private credit score: %.2f", pc_score)
+            else:
+                logger.warning("Private credit score: skipped (insufficient data)")
         except Exception:
             logger.exception("Private credit scoring failed")
 
         try:
             ai_score = score_ai_concentration(db_url, scoring_config)
-            logger.info("AI concentration score: %.2f", ai_score)
+            if ai_score is not None:
+                logger.info("AI concentration score: %.2f", ai_score)
+            else:
+                logger.warning("AI concentration score: skipped (insufficient data)")
         except Exception:
             logger.exception("AI concentration scoring failed")
 
         try:
             eg_score = score_energy_geo(db_url, scoring_config)
-            logger.info("Energy/geo score: %.2f", eg_score)
+            if eg_score is not None:
+                logger.info("Energy/geo score: %.2f", eg_score)
+            else:
+                logger.warning("Energy/geo score: skipped (insufficient data)")
         except Exception:
             logger.exception("Energy/geo scoring failed")
 
         try:
             contagion_score = score_contagion(db_url, scoring_config)
-            logger.info("Contagion score: %.2f", contagion_score)
+            if contagion_score is not None:
+                logger.info("Contagion score: %.2f", contagion_score)
+            else:
+                logger.warning("Contagion score: skipped (insufficient data)")
         except Exception:
             logger.exception("Contagion scoring failed")
 
         try:
             composite_score = score_composite(db_url, scoring_config)
-            logger.info("Composite score: %.2f", composite_score)
+            if composite_score is not None:
+                logger.info("Composite score: %.2f", composite_score)
+            else:
+                logger.warning("Composite score: skipped (insufficient data)")
         except Exception:
             logger.exception("Composite scoring failed")
 

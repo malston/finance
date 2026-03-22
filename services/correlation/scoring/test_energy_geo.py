@@ -18,11 +18,12 @@ ENERGY_GEO_CONFIG = {
     "scoring": {
         "energy_geo": {
             "weight": 0.25,
+            "min_components": 2,
             "components": {
                 "crude_level": {
                     "sub_weight": 0.30,
                     "ticker": "CL=F",
-                    "min_value": 50,
+                    "min_value": 30,
                     "max_value": 120,
                 },
                 "crude_volatility": {
@@ -46,22 +47,31 @@ ENERGY_GEO_CONFIG = {
 
 
 class TestCrudeLevelScoring:
-    """Tests for crude oil price level sub-component."""
+    """Tests for crude oil price level sub-component.
+
+    min_value=30 (floor), max_value=120 (ceiling). $50 crude should score
+    ~22% risk, not 0%.
+    """
 
     def test_at_min_scores_zero(self):
-        assert linear_score(50, 50, 120) == 0.0
+        assert linear_score(30, 30, 120) == 0.0
 
     def test_at_max_scores_100(self):
-        assert linear_score(120, 50, 120) == 100.0
+        assert linear_score(120, 30, 120) == 100.0
 
     def test_midpoint(self):
-        assert linear_score(85, 50, 120) == pytest.approx(50.0)
+        assert linear_score(75, 30, 120) == pytest.approx(50.0)
 
     def test_below_min_clamps(self):
-        assert linear_score(30, 50, 120) == 0.0
+        assert linear_score(20, 30, 120) == 0.0
 
     def test_above_max_clamps(self):
-        assert linear_score(150, 50, 120) == 100.0
+        assert linear_score(150, 30, 120) == 100.0
+
+    def test_50_dollar_crude_scores_nonzero(self):
+        """$50 crude should register meaningful risk with min_value=30."""
+        score = linear_score(50, 30, 120)
+        assert score == pytest.approx(22.22, abs=0.01)
 
 
 class TestCrudeVolatilityScoring:
@@ -247,7 +257,7 @@ class TestScoreEnergyGeoFromValues:
         from scoring.energy_geo import score_energy_geo_from_values
 
         result = score_energy_geo_from_values(
-            crude_value=85.0,         # linear_score(85, 50, 120) = 50
+            crude_value=75.0,         # linear_score(75, 30, 120) = 50
             crude_volatility=0.325,   # linear_score(0.325, 0.15, 0.50) = 50
             ewt_drawdown=-0.125,      # inverted_linear_score(-0.125, 0, -0.25) = 50
             config=ENERGY_GEO_CONFIG,
@@ -269,12 +279,12 @@ class TestScoreEnergyGeoFromValues:
         from scoring.energy_geo import score_energy_geo_from_values
 
         result = score_energy_geo_from_values(
-            crude_value=85.0,         # 50
+            crude_value=75.0,         # linear_score(75, 30, 120) = 50
             crude_volatility=None,
-            ewt_drawdown=-0.125,      # 50
+            ewt_drawdown=-0.125,      # inverted_linear_score(-0.125, 0, -0.25) = 50
             config=ENERGY_GEO_CONFIG,
         )
-        # Weights: 0.30 + 0.35 = 0.65
+        # Weights: 0.30 + 0.35 = 0.65, both at 50
         # (50*0.30 + 50*0.35) / 0.65 = 32.5/0.65 = 50
         assert result == pytest.approx(50.0, abs=0.5)
 
@@ -293,9 +303,9 @@ class TestScoreEnergyGeoFromValues:
         from scoring.energy_geo import score_energy_geo_from_values
 
         result = score_energy_geo_from_values(
-            crude_value=50.0,         # 0
-            crude_volatility=0.15,    # 0
-            ewt_drawdown=0.0,         # 0
+            crude_value=30.0,         # linear_score(30, 30, 120) = 0
+            crude_volatility=0.15,    # linear_score(0.15, 0.15, 0.50) = 0
+            ewt_drawdown=0.0,         # inverted_linear_score(0, 0, -0.25) = 0
             config=ENERGY_GEO_CONFIG,
         )
         assert result == pytest.approx(0.0)
@@ -317,13 +327,126 @@ class TestScoreEnergyGeoFromValues:
         from scoring.energy_geo import score_energy_geo_from_values
 
         result = score_energy_geo_from_values(
-            crude_value=85.0,         # 50
-            crude_volatility=0.50,    # 100
-            ewt_drawdown=0.0,         # 0
+            crude_value=75.0,         # linear_score(75, 30, 120) = 50
+            crude_volatility=0.50,    # linear_score(0.50, 0.15, 0.50) = 100
+            ewt_drawdown=0.0,         # inverted_linear_score(0, 0, -0.25) = 0
             config=ENERGY_GEO_CONFIG,
         )
         # 50*0.30 + 100*0.35 + 0*0.35 = 15 + 35 + 0 = 50
         assert result == pytest.approx(50.0, abs=0.5)
+
+
+class TestMinComponentsEnforcement:
+    """Tests for min_components config in compute_composite_score.
+
+    When a domain config specifies min_components, the scorer should return
+    None if fewer than that many sub-components have data -- preventing
+    misleading scores from a single data point.
+    """
+
+    MIN_COMPONENTS_CONFIG = {
+        "scoring": {
+            "energy_geo": {
+                "weight": 0.25,
+                "min_components": 2,
+                "components": {
+                    "crude_level": {
+                        "sub_weight": 0.30,
+                        "ticker": "CL=F",
+                        "min_value": 30,
+                        "max_value": 120,
+                    },
+                    "crude_volatility": {
+                        "sub_weight": 0.35,
+                        "ticker": "CL=F",
+                        "lookback_days": 30,
+                        "min_value": 0.15,
+                        "max_value": 0.50,
+                    },
+                    "ewt_drawdown": {
+                        "sub_weight": 0.35,
+                        "ticker": "EWT",
+                        "lookback_days": 252,
+                        "min_value": 0,
+                        "max_value": -0.25,
+                    },
+                },
+            },
+        },
+    }
+
+    def test_one_component_below_min_returns_none(self):
+        """With min_components=2, a single sub-score should return None."""
+        config = self.MIN_COMPONENTS_CONFIG["scoring"]["energy_geo"]
+        sub_scores = {"crude_level": 50.0}
+        score = compute_composite_score(sub_scores, config)
+        assert score is None
+
+    def test_two_components_meets_min(self):
+        """With min_components=2, two sub-scores should produce a score."""
+        config = self.MIN_COMPONENTS_CONFIG["scoring"]["energy_geo"]
+        sub_scores = {"crude_level": 50.0, "crude_volatility": 50.0}
+        score = compute_composite_score(sub_scores, config)
+        assert score == 50.0
+
+    def test_three_components_exceeds_min(self):
+        """All three sub-scores is above the minimum -- scores normally."""
+        config = self.MIN_COMPONENTS_CONFIG["scoring"]["energy_geo"]
+        sub_scores = {
+            "crude_level": 50.0,
+            "crude_volatility": 50.0,
+            "ewt_drawdown": 50.0,
+        }
+        score = compute_composite_score(sub_scores, config)
+        assert score == 50.0
+
+    def test_zero_components_still_returns_none(self):
+        """No data at all returns None (existing behavior preserved)."""
+        config = self.MIN_COMPONENTS_CONFIG["scoring"]["energy_geo"]
+        sub_scores = {}
+        score = compute_composite_score(sub_scores, config)
+        assert score is None
+
+    def test_no_min_components_config_allows_single(self):
+        """Without min_components in config, one sub-score still produces a score."""
+        config_no_min = {
+            "components": {
+                "crude_level": {"sub_weight": 0.30},
+                "crude_volatility": {"sub_weight": 0.35},
+                "ewt_drawdown": {"sub_weight": 0.35},
+            },
+        }
+        sub_scores = {"crude_level": 80.0}
+        score = compute_composite_score(sub_scores, config_no_min)
+        assert score == 80.0
+
+    def test_from_values_with_min_components(self):
+        """score_energy_geo_from_values returns None with only crude_value
+        when min_components=2."""
+        from scoring.energy_geo import score_energy_geo_from_values
+
+        result = score_energy_geo_from_values(
+            crude_value=85.0,
+            crude_volatility=None,
+            ewt_drawdown=None,
+            config=self.MIN_COMPONENTS_CONFIG,
+        )
+        assert result is None
+
+    def test_from_values_with_two_values_and_min_components(self):
+        """score_energy_geo_from_values returns a score with two inputs
+        when min_components=2."""
+        from scoring.energy_geo import score_energy_geo_from_values
+
+        result = score_energy_geo_from_values(
+            crude_value=85.0,         # linear_score(85, 30, 120) ~= 61.11
+            crude_volatility=0.325,   # linear_score(0.325, 0.15, 0.50) = 50
+            ewt_drawdown=None,
+            config=self.MIN_COMPONENTS_CONFIG,
+        )
+        # Weights: 0.30 + 0.35 = 0.65
+        # (61.11*0.30 + 50*0.35) / 0.65 = (18.33 + 17.5) / 0.65 = 55.13
+        assert result == pytest.approx(55.13, abs=0.5)
 
 
 class TestRollingVolatilityEdgeCases:
