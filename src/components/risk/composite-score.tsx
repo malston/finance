@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { C } from "@/lib/theme";
 import { useFramework } from "@/lib/framework-context";
+import { isScoreAged, formatScoreTimestamp } from "@/lib/format-score-age";
 
 interface CompositeData {
   score: number | null;
@@ -180,6 +181,19 @@ export function CompositeScore() {
             >
               {level ? `● THREAT LEVEL: ${level}` : "● THREAT LEVEL: --"}
             </div>
+            {data?.updated_at && isScoreAged(data.updated_at) && (
+              <div
+                data-testid="composite-score-age"
+                style={{
+                  fontSize: 10,
+                  color: C.textDim,
+                  fontFamily: "var(--font-mono)",
+                  marginTop: 2,
+                }}
+              >
+                {formatScoreTimestamp(data.updated_at)}
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", gap: 20 }}>
             {DOMAIN_ORDER.map((key) => {

@@ -433,6 +433,63 @@ describe("CompositeScore", () => {
     });
   });
 
+  it("shows 'as of' timestamp when score data is aged", async () => {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ...SCORES_RESPONSE,
+        updated_at: twoHoursAgo,
+      }),
+    });
+
+    render(<CompositeScore />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      const ageEl = screen.getByTestId("composite-score-age");
+      expect(ageEl).toBeInTheDocument();
+      expect(ageEl.textContent).toContain("as of");
+      expect(ageEl.textContent).toContain("ET");
+    });
+  });
+
+  it("hides 'as of' timestamp when score data is fresh", async () => {
+    const oneMinAgo = new Date(Date.now() - 60 * 1000).toISOString();
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ...SCORES_RESPONSE,
+        updated_at: oneMinAgo,
+      }),
+    });
+
+    render(<CompositeScore />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("composite-score-value")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("composite-score-age")).toBeNull();
+  });
+
+  it("hides 'as of' timestamp when updated_at is null", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ...SCORES_RESPONSE,
+        composite: { score: null, level: null, color: null },
+        updated_at: null,
+        stale: true,
+      }),
+    });
+
+    render(<CompositeScore />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("composite-score-value")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("composite-score-age")).toBeNull();
+  });
+
   it("applies domain-specific colors to badges", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
