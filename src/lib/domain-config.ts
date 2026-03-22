@@ -30,7 +30,7 @@ export const DOMAINS: DomainConfig[] = [
     ],
   },
   {
-    name: "AI / Tech Concentration",
+    name: "AI/Tech Concentration",
     description: "Mag-10 weight, SPY vs RSP spread, sector momentum",
     icon: "cpu",
     color: "#a855f7",
