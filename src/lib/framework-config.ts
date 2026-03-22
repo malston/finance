@@ -66,5 +66,10 @@ export function parseFramework(param: string | null): Framework {
   if (param === "bookstaber" || param === "yardeni") {
     return param;
   }
+  if (param) {
+    console.warn(
+      `Unrecognized framework "${param}", defaulting to "bookstaber"`,
+    );
+  }
   return "bookstaber";
 }

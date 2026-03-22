@@ -43,8 +43,11 @@ describe("GET /api/risk/news", () => {
     const response = await GET(request);
     const body = await response.json();
     expect(response.status).toBe(200);
-    expect(body).toHaveLength(2);
-    expect(body[0].headline).toBe("BDC defaults spike amid market stress");
+    expect(body.items).toHaveLength(2);
+    expect(body.items[0].headline).toBe(
+      "BDC defaults spike amid market stress",
+    );
+    expect(body.framework).toBe("bookstaber");
   });
 
   it("returns 400 when domain is missing", async () => {
@@ -90,7 +93,8 @@ describe("GET /api/risk/news", () => {
     const response = await GET(request);
     const body = await response.json();
     expect(response.status).toBe(200);
-    expect(body).toEqual([]);
+    expect(body.items).toEqual([]);
+    expect(body.framework).toBe("bookstaber");
   });
 
   describe("framework parameter", () => {
@@ -130,9 +134,10 @@ describe("GET /api/risk/news", () => {
       const response = await GET(request);
       const body = await response.json();
 
-      expect(body[0].sentiment).toBe(-0.45);
-      expect(body[1].sentiment).toBe(0.1);
-      expect(body[2].sentiment).toBe(0.6);
+      expect(body.items[0].sentiment).toBe(-0.45);
+      expect(body.items[1].sentiment).toBe(0.1);
+      expect(body.items[2].sentiment).toBe(0.6);
+      expect(body.framework).toBe("bookstaber");
     });
 
     it("sorts news by sentiment descending (most positive first) for yardeni", async () => {
@@ -144,9 +149,10 @@ describe("GET /api/risk/news", () => {
       const response = await GET(request);
       const body = await response.json();
 
-      expect(body[0].sentiment).toBe(0.6);
-      expect(body[1].sentiment).toBe(0.1);
-      expect(body[2].sentiment).toBe(-0.45);
+      expect(body.items[0].sentiment).toBe(0.6);
+      expect(body.items[1].sentiment).toBe(0.1);
+      expect(body.items[2].sentiment).toBe(-0.45);
+      expect(body.framework).toBe("yardeni");
     });
 
     it("defaults to bookstaber sort (ascending) when no framework specified", async () => {
@@ -158,8 +164,9 @@ describe("GET /api/risk/news", () => {
       const response = await GET(request);
       const body = await response.json();
 
-      expect(body[0].sentiment).toBe(-0.45);
-      expect(body[2].sentiment).toBe(0.6);
+      expect(body.items[0].sentiment).toBe(-0.45);
+      expect(body.items[2].sentiment).toBe(0.6);
+      expect(body.framework).toBe("bookstaber");
     });
 
     it("defaults to bookstaber for invalid framework value", async () => {
@@ -172,11 +179,12 @@ describe("GET /api/risk/news", () => {
       const body = await response.json();
 
       // Ascending sort (bookstaber default)
-      expect(body[0].sentiment).toBe(-0.45);
-      expect(body[2].sentiment).toBe(0.6);
+      expect(body.items[0].sentiment).toBe(-0.45);
+      expect(body.items[2].sentiment).toBe(0.6);
+      expect(body.framework).toBe("bookstaber");
     });
 
-    it("returns empty array regardless of framework when no news", async () => {
+    it("returns empty items regardless of framework when no news", async () => {
       mockQueryNewsSentiment.mockResolvedValueOnce([]);
 
       const request = new Request(
@@ -185,7 +193,8 @@ describe("GET /api/risk/news", () => {
       const response = await GET(request);
       const body = await response.json();
 
-      expect(body).toEqual([]);
+      expect(body.items).toEqual([]);
+      expect(body.framework).toBe("yardeni");
     });
   });
 });

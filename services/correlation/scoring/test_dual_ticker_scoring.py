@@ -6,6 +6,7 @@ Tests cover:
 - Yardeni composite reads YARDENI_SCORE_* tickers
 - Yardeni config weights sum to 1.0
 - Yardeni config composite domain tickers use YARDENI_ prefix
+- _run_scoring_pass failure isolation (one scorer failing doesn't stop others)
 """
 
 from unittest.mock import patch, MagicMock
@@ -18,6 +19,7 @@ from scoring.ai_concentration import score_ai_concentration_from_values
 from scoring.contagion import score_contagion_from_values
 from scoring.energy_geo import score_energy_geo_from_values
 from scoring.composite import compute_composite_from_values
+from run import _run_scoring_pass
 
 
 # ---------------------------------------------------------------------------
@@ -583,3 +585,62 @@ class TestYardeniConfigValidation:
             + scoring["contagion"]["weight"]
         )
         assert total == pytest.approx(1.0)
+
+
+# ---------------------------------------------------------------------------
+# Test: _run_scoring_pass failure isolation
+# ---------------------------------------------------------------------------
+
+
+class TestRunScoringPassIsolation:
+    """Verify that a failure in one scorer does not prevent others from running."""
+
+    def test_failing_scorer_does_not_block_others(self):
+        """When one scorer raises, the remaining scorers still execute."""
+        call_log = []
+
+        def scorer_ok(db_url, config, ticker_prefix=""):
+            call_log.append("ok")
+            return 50.0
+
+        def scorer_fail(db_url, config, ticker_prefix=""):
+            call_log.append("fail")
+            raise RuntimeError("simulated failure")
+
+        with patch("run._SCORERS", [
+            (scorer_ok, "First"),
+            (scorer_fail, "Broken"),
+            (scorer_ok, "Third"),
+            (scorer_ok, "Fourth"),
+            (scorer_ok, "Fifth"),
+        ]):
+            _run_scoring_pass("fake://db", {}, "Test")
+
+        assert call_log == ["ok", "fail", "ok", "ok", "ok"]
+
+    def test_all_scorers_failing_does_not_raise(self):
+        """If every scorer raises, _run_scoring_pass completes without raising."""
+        def scorer_fail(db_url, config, ticker_prefix=""):
+            raise RuntimeError("boom")
+
+        with patch("run._SCORERS", [
+            (scorer_fail, "A"),
+            (scorer_fail, "B"),
+        ]):
+            _run_scoring_pass("fake://db", {}, "Test")
+
+    def test_ticker_prefix_passed_to_scorers(self):
+        """The ticker_prefix argument is forwarded to each scorer."""
+        received_prefixes = []
+
+        def scorer_capture(db_url, config, ticker_prefix=""):
+            received_prefixes.append(ticker_prefix)
+            return 42.0
+
+        with patch("run._SCORERS", [
+            (scorer_capture, "A"),
+            (scorer_capture, "B"),
+        ]):
+            _run_scoring_pass("fake://db", {}, "Test", ticker_prefix="YARDENI_")
+
+        assert received_prefixes == ["YARDENI_", "YARDENI_"]

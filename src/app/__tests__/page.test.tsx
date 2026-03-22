@@ -44,10 +44,16 @@ function mockAllFetches() {
       });
     }
     if (typeof url === "string" && url.includes("/api/risk/timeseries")) {
-      return Promise.resolve({ ok: true, json: async () => [] });
+      return Promise.resolve({
+        ok: true,
+        json: async () => [],
+      });
     }
     if (typeof url === "string" && url.includes("/api/risk/latest-prices")) {
-      return Promise.resolve({ ok: true, json: async () => [] });
+      return Promise.resolve({
+        ok: true,
+        json: async () => [],
+      });
     }
     if (typeof url === "string" && url.includes("/api/risk/correlations")) {
       return Promise.resolve({
@@ -65,7 +71,10 @@ function mockAllFetches() {
       });
     }
     if (typeof url === "string" && url.includes("/api/risk/news")) {
-      return Promise.resolve({ ok: true, json: async () => [] });
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ items: [], framework: "bookstaber" }),
+      });
     }
     if (typeof url === "string" && url.includes("/api/risk/freshness")) {
       return Promise.resolve({

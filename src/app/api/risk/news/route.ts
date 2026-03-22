@@ -36,7 +36,7 @@ export async function GET(request: Request): Promise<Response> {
         : b.sentiment - a.sentiment;
     });
 
-    return NextResponse.json(sorted);
+    return NextResponse.json({ items: sorted, framework });
   } catch (err) {
     console.error("[/api/risk/news]", err);
     return NextResponse.json(

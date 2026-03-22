@@ -39,7 +39,8 @@ async function fetchAllNews(
       );
       if (!res.ok)
         throw new Error(`News fetch failed for ${d.key}: ${res.status}`);
-      const data: NewsHeadline[] = await res.json();
+      const json = await res.json();
+      const data: NewsHeadline[] = json.items ?? json;
       return [d.key, data] as const;
     }),
   );
