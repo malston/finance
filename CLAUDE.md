@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Bookstaber Financial Risk Monitor — a systemic risk dashboard tracking four interconnected risk domains (Private Credit, AI/Tech Concentration, Energy/Geopolitical, Cross-Domain Contagion) with rolling correlation-based contagion detection.
+Financial Risk Monitor -- a systemic risk dashboard supporting dual interpretive frameworks (Bookstaber systemic risk / Yardeni resilience) tracking four interconnected risk domains (Private Credit, AI/Tech Concentration, Energy/Geopolitical, Cross-Domain Contagion) with rolling correlation-based contagion detection.
 
 ## Architecture
 
@@ -63,7 +63,8 @@ All scoring weights, thresholds, and alert rules live in YAML config files — n
 ├── docs/                         # Architecture diagrams & guides
 ├── scripts/                      # Utility scripts
 ├── tests/                        # E2E bash test scripts
-└── test/e2e/                     # Playwright E2E tests
+├── e2e/                          # Playwright E2E tests
+└── test/e2e/                     # Go-based E2E tests
 ```
 
 ## Build and Test Commands
@@ -121,16 +122,17 @@ See `.env.example` for the full template.
 
 ## Key Config Files
 
-| File                                       | Purpose                                                                       |
-| ------------------------------------------ | ----------------------------------------------------------------------------- |
-| `services/ingestion/config.yaml`           | Tickers, polling intervals, API keys (env vars), staleness thresholds         |
-| `services/correlation/scoring_config.yaml` | Domain weights (0.30/0.20/0.25/0.25), sub-component thresholds, threat levels |
-| `services/correlation/alert_config.yaml`   | Alert rules, consecutive readings, cooldowns, channel config                  |
-| `docker-compose.yml`                       | Service orchestration, health checks, volumes                                 |
-| `services/db/init.sql`                     | TimescaleDB schema (hypertable, indexes, all tables)                          |
-| `vitest.config.ts`                         | Vitest test runner (jsdom, globals, setup file)                               |
-| `components.json`                          | shadcn/ui component configuration                                            |
-| `tailwind.config.ts`                       | Tailwind CSS (dark mode, custom theme)                                        |
+| File                                               | Purpose                                                                                  |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `services/ingestion/config.yaml`                   | Tickers, polling intervals, API keys (env vars), staleness thresholds                    |
+| `services/correlation/scoring_config.yaml`         | Bookstaber domain weights (0.30/0.20/0.25/0.25), sub-component thresholds, threat levels |
+| `services/correlation/scoring_config_yardeni.yaml` | Yardeni framework weights (0.25/0.20/0.30/0.25) and threat bands                         |
+| `services/correlation/alert_config.yaml`           | Alert rules, consecutive readings, cooldowns, channel config                             |
+| `docker-compose.yml`                               | Service orchestration, health checks, volumes                                            |
+| `services/db/init.sql`                             | TimescaleDB schema (hypertable, indexes, all tables)                                     |
+| `vitest.config.ts`                                 | Vitest test runner (jsdom, globals, setup file)                                          |
+| `components.json`                                  | shadcn/ui component configuration                                                        |
+| `tailwind.config.ts`                               | Tailwind CSS (dark mode, custom theme)                                                   |
 
 ## Tech Stack
 
@@ -148,16 +150,16 @@ See `.env.example` for the full template.
 
 All risk endpoints under `src/app/api/risk/`:
 
-| Endpoint                               | Purpose                                        |
-| -------------------------------------- | ---------------------------------------------- |
-| `/api/risk/scores`                     | Composite + 4 domain scores with threat levels |
-| `/api/risk/correlations?days=N`        | Rolling pairwise correlations (3 pairs)        |
-| `/api/risk/health`                     | Source staleness and failure tracking           |
-| `/api/risk/timeseries?ticker=X&days=N` | Historical values for charting                 |
-| `/api/risk/latest-prices`              | Most recent price per display ticker           |
-| `/api/risk/news?domain=X&limit=N`     | Sentiment headlines by domain                  |
-| `/api/risk/freshness`                  | Per-ticker data age and status                 |
-| `/api/risk/alerts`                     | Alert history (GET) and acknowledgement (POST) |
+| Endpoint                               | Purpose                                                                  |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| `/api/risk/scores?framework=X`         | Composite + 4 domain scores with threat levels and per-domain timestamps |
+| `/api/risk/correlations?days=N`        | Rolling pairwise correlations (3 pairs)                                  |
+| `/api/risk/health`                     | Source staleness and failure tracking                                    |
+| `/api/risk/timeseries?ticker=X&days=N` | Historical values for charting                                           |
+| `/api/risk/latest-prices`              | Most recent price per display ticker                                     |
+| `/api/risk/news?domain=X&limit=N`      | Sentiment headlines by domain                                            |
+| `/api/risk/freshness`                  | Per-ticker data age and status                                           |
+| `/api/risk/alerts`                     | Alert history (GET) and acknowledgement (POST)                           |
 
 Additional endpoints: `/api/auth/valyu/*`, `/api/charts/*`, `/api/chat/*`, `/api/csvs/*`, `/api/reports/generate-pdf`, `/api/enterprise/inquiry`, `/api/env-status`, `/api/lmstudio-status`, `/api/ollama-status`.
 
@@ -165,16 +167,16 @@ Additional endpoints: `/api/auth/valyu/*`, `/api/charts/*`, `/api/chat/*`, `/api
 
 Six TimescaleDB tables (defined in `services/db/init.sql`):
 
-| Table              | Purpose                                                     |
-| ------------------ | ----------------------------------------------------------- |
-| `time_series`      | Hypertable for all market data (ticker, value, source, time)|
-| `source_health`    | Per-source last_success, last_error, consecutive_failures   |
-| `news_sentiment`   | Domain headlines with sentiment scores                      |
-| `insider_trades`   | SEC filing data (ticker, insider, trade_type, shares, price)|
-| `alert_state`      | Consecutive count and last_triggered per rule                |
-| `alert_history`    | Alert audit trail (rule, channels, delivered status)         |
+| Table            | Purpose                                                      |
+| ---------------- | ------------------------------------------------------------ |
+| `time_series`    | Hypertable for all market data (ticker, value, source, time) |
+| `source_health`  | Per-source last_success, last_error, consecutive_failures    |
+| `news_sentiment` | Domain headlines with sentiment scores                       |
+| `insider_trades` | SEC filing data (ticker, insider, trade_type, shares, price) |
+| `alert_state`    | Consecutive count and last_triggered per rule                |
+| `alert_history`  | Alert audit trail (rule, channels, delivered status)         |
 
-Computed/synthetic tickers stored in `time_series`: `SCORE_PRIVATE_CREDIT`, `SCORE_AI_CONCENTRATION`, `SCORE_ENERGY_GEO`, `SCORE_CONTAGION`, `SCORE_COMPOSITE`, `SPY_RSP_RATIO`, `BDC_AVG_NAV_DISCOUNT`, `BDC_VOLUME_PROXY`.
+Computed/synthetic tickers stored in `time_series`: `SCORE_PRIVATE_CREDIT`, `SCORE_AI_CONCENTRATION`, `SCORE_ENERGY_GEO`, `SCORE_CONTAGION`, `SCORE_COMPOSITE`, `SPY_RSP_RATIO`, `BDC_AVG_NAV_DISCOUNT`, `BDC_VOLUME_PROXY`. Yardeni framework uses `YARDENI_` prefix (e.g., `YARDENI_SCORE_COMPOSITE`).
 
 ## Scoring System
 
@@ -185,9 +187,20 @@ Four domain scorers produce 0-100 scores, combined into a weighted composite:
 - **Energy/Geo** (0.25): Crude level/volatility, EWT drawdown
 - **Contagion** (0.25): Max pairwise correlation, VIX level
 
-Threat levels: LOW (0-25), ELEVATED (26-50), HIGH (51-75), CRITICAL (76-100).
+Bookstaber threat levels: LOW (0-25), ELEVATED (26-50), HIGH (51-75), CRITICAL (76-100).
+Yardeni threat levels: LOW (0-30), ELEVATED (31-55), HIGH (56-80), CRITICAL (81-100).
 
-Missing domains are renormalized (weights redistribute). Scorers return `None` (not 0) when data is unavailable. `fetch_latest_value` enforces a 2-hour staleness window via `max_age_hours`. Energy/Geo requires a minimum of 2 sub-components to produce a score.
+### Dual Framework Architecture
+
+Both frameworks score the same raw market data with different weights and threat bands. The scoring pipeline runs both on every 5-minute cycle using ticker prefixes (Bookstaber: `SCORE_*`, Yardeni: `YARDENI_SCORE_*`). API routes select by `?framework=bookstaber|yardeni`. The frontend toggle persists to localStorage. See `src/lib/framework-config.ts` for the framework configuration.
+
+### Scoring Safety
+
+Missing domains are renormalized (weights redistribute). Scorers return `None` (not 0) when data is unavailable -- a score of 0 means "no risk," while `None` means "unknown." `fetch_latest_value` enforces a 2-hour staleness window via `max_age_hours` to prevent stale data from producing misleading scores. Energy/Geo requires a minimum of 2 sub-components to produce a score.
+
+### Weekend/Holiday Behavior
+
+On weekends and market holidays, Finnhub returns exchange-close timestamps (Friday 4 PM ET). The 2-hour staleness window correctly rejects this data, so most domain scorers produce `None`. FRED data (daily) may still be fresh enough for Private Credit. The dashboard shows per-domain "as of {timestamp} ET" indicators when a domain's score is older than 30 minutes (see `src/lib/format-score-age.ts`).
 
 ## Data Source Tiering
 
@@ -199,25 +212,30 @@ Cost optimization — Finnhub (free) handles all high-frequency polling, Valyu (
 
 ## Testing Patterns
 
-**TypeScript** (Vitest + jsdom, 36+ test files):
+**TypeScript** (Vitest + jsdom, 45 test files, 488 tests):
+
 - Tests at `src/**/__tests__/*.test.ts(x)` or alongside routes as `route.test.ts`
 - API route tests mock `@/lib/timescaledb`
-- Component tests use `@/test/query-test-utils.tsx` for React Query wrapper
+- Component tests use `@/test/query-test-utils.tsx` for React Query + FrameworkProvider wrapper
 - Setup file: `vitest.setup.ts`
 
-**Go** (standard `testing`, 21+ test files):
+**Go** (standard `testing`, 16 test files):
+
 - `httptest.Server` for HTTP mocking
 - `testcontainers-go` for integration tests (real TimescaleDB)
 - Table-driven tests
 
-**Python** (pytest, 17+ test files):
+**Python** (pytest, 18 test files, 238 unit / 293 total):
+
 - Unit tests use pure functions (`score_*_from_values`)
 - Integration tests require `DATABASE_URL` pointing to running TimescaleDB
 - Skip tags: `integration`, `dispatch_wiring`
 
 **E2E**:
-- Playwright tests in `test/e2e/`
+
+- Playwright tests in `e2e/` (`dual-framework-toggle.spec.ts`, `weekend-staleness.spec.ts`)
 - Bash scripts in `tests/` (`e2e-alerting.sh`, `e2e-correlation.sh`, `e2e-dashboard.sh`)
+- Playwright config: `playwright.config.ts`, runs against `http://localhost:3000`
 
 ## Code Conventions
 
@@ -228,9 +246,17 @@ Cost optimization — Finnhub (free) handles all high-frequency polling, Valyu (
 - **Go**: Standard project layout, packages under `services/ingestion/`
 - **Python**: Flat module structure under `services/correlation/`, YAML-driven config
 
+## Utility Scripts
+
+| Script                     | Purpose                                                                                        |
+| -------------------------- | ---------------------------------------------------------------------------------------------- |
+| `scripts/backfill-week.sh` | Backfill historical data from Yahoo Finance + FRED (default 35 days). Requires `FRED_API_KEY`. |
+
 ## Known Limitations
 
-- VIX polled as VIXY (ETF proxy) — real VIX unavailable on Finnhub free tier
-- MOVE and SKEW indices unavailable — contagion scorer uses 2 of originally planned 4 sub-components
-- News sentiment only fetched during US market hours (9:30 AM – 4:00 PM ET)
+- VIX polled as VIXY (ETF proxy) -- real VIX unavailable on Finnhub free tier
+- MOVE and SKEW indices unavailable -- contagion scorer uses 2 of originally planned 4 sub-components
+- Finnhub free tier does not support historical candles (`/stock/candle`) -- use `scripts/backfill-week.sh` (Yahoo Finance) for initial data population
+- News sentiment only fetched during US market hours (9:30 AM - 4:00 PM ET)
 - Correlation computation requires 30+ trading days of price history to produce values
+- Finnhub quotes use exchange timestamps, not wall clock -- on weekends all quotes carry Friday's close timestamp
