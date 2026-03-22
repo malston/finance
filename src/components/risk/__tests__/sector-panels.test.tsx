@@ -54,17 +54,23 @@ describe("SectorPanels", () => {
     render(<SectorPanels />, { wrapper: createWrapper() });
 
     expect(screen.getByText("Private Credit Stress")).toBeInTheDocument();
-    expect(screen.getByText("AI / Tech Concentration")).toBeInTheDocument();
+    expect(screen.getByText("AI/Tech Concentration")).toBeInTheDocument();
     expect(screen.getByText("Energy & Geopolitical")).toBeInTheDocument();
     expect(screen.getByText("Cross-Domain Contagion")).toBeInTheDocument();
   });
 
-  it("renders four sector panels", async () => {
+  it("renders four sector panels with domain-specific testids", async () => {
     mockAllFetches();
     render(<SectorPanels />, { wrapper: createWrapper() });
 
-    const panels = screen.getAllByTestId("sector-panel");
-    expect(panels).toHaveLength(4);
+    expect(
+      screen.getByTestId("sector-panel-private_credit"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("sector-panel-ai_concentration"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("sector-panel-energy_geo")).toBeInTheDocument();
+    expect(screen.getByTestId("sector-panel-contagion")).toBeInTheDocument();
   });
 
   it("first panel (Private Credit) is expanded by default", async () => {

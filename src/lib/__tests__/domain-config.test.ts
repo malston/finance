@@ -10,8 +10,8 @@ describe("DOMAINS configuration", () => {
     expect(DOMAINS[0].name).toBe("Private Credit Stress");
   });
 
-  it("has AI / Tech Concentration as second domain", () => {
-    expect(DOMAINS[1].name).toBe("AI / Tech Concentration");
+  it("has AI/Tech Concentration as second domain", () => {
+    expect(DOMAINS[1].name).toBe("AI/Tech Concentration");
   });
 
   it("has Energy & Geopolitical as third domain", () => {

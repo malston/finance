@@ -224,7 +224,7 @@ describe("SectorPanel", () => {
     });
 
     await waitFor(() => {
-      const panel = screen.getByTestId("sector-panel");
+      const panel = screen.getByTestId("sector-panel-private_credit");
       expect(panel.style.borderColor).toContain("249, 115, 22");
     });
   });
