@@ -16,6 +16,7 @@ interface DomainData {
   weight: number;
   level: string | null;
   color: string | null;
+  updated_at: string | null;
 }
 
 interface ScoresResponse {

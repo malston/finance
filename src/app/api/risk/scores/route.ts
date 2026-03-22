@@ -49,6 +49,7 @@ export async function GET(request: Request): Promise<Response> {
         weight: number;
         level: string | null;
         color: string | null;
+        updated_at: string | null;
       }
     > = {};
 
@@ -67,6 +68,7 @@ export async function GET(request: Request): Promise<Response> {
         weight,
         level: threatLevel?.level ?? null,
         color: threatLevel?.color ?? null,
+        updated_at: row?.time ?? null,
       };
     }
 

@@ -80,9 +80,16 @@ describe("GET /api/risk/scores", () => {
     expect(body.domains.contagion.weight).toBe(0.25);
 
     expect(body.updated_at).toBe("2026-03-20T10:05:00Z");
+
+    expect(body.domains.private_credit.updated_at).toBe("2026-03-20T10:00:00Z");
+    expect(body.domains.ai_concentration.updated_at).toBe(
+      "2026-03-20T10:00:00Z",
+    );
+    expect(body.domains.energy_geo.updated_at).toBe("2026-03-20T10:00:00Z");
+    expect(body.domains.contagion.updated_at).toBe("2026-03-20T10:00:00Z");
   });
 
-  it("returns null for missing domain scores", async () => {
+  it("returns null for missing domain scores with null updated_at", async () => {
     mockQueryLatestPrices.mockResolvedValueOnce([
       {
         time: "2026-03-20T10:00:00Z",
@@ -103,9 +110,49 @@ describe("GET /api/risk/scores", () => {
 
     expect(response.status).toBe(200);
     expect(body.domains.private_credit.score).toBe(55);
+    expect(body.domains.private_credit.updated_at).toBe("2026-03-20T10:00:00Z");
     expect(body.domains.ai_concentration.score).toBeNull();
+    expect(body.domains.ai_concentration.updated_at).toBeNull();
     expect(body.domains.energy_geo.score).toBeNull();
+    expect(body.domains.energy_geo.updated_at).toBeNull();
     expect(body.domains.contagion.score).toBeNull();
+    expect(body.domains.contagion.updated_at).toBeNull();
+  });
+
+  it("returns per-domain timestamps when domains have different ages", async () => {
+    mockQueryLatestPrices.mockResolvedValueOnce([
+      {
+        time: "2026-03-19T16:00:00Z",
+        ticker: "SCORE_AI_CONCENTRATION",
+        value: 40,
+        source: "computed",
+      },
+      {
+        time: "2026-03-20T10:00:00Z",
+        ticker: "SCORE_PRIVATE_CREDIT",
+        value: 55,
+        source: "computed",
+      },
+      {
+        time: "2026-03-20T10:05:00Z",
+        ticker: "SCORE_COMPOSITE",
+        value: 50,
+        source: "computed",
+      },
+    ]);
+
+    const response = await GET(makeRequest());
+    const body = await response.json();
+
+    // Global updated_at uses max (most recent row)
+    expect(body.updated_at).toBe("2026-03-20T10:05:00Z");
+    // Per-domain timestamps reflect each domain's actual age
+    expect(body.domains.private_credit.updated_at).toBe("2026-03-20T10:00:00Z");
+    expect(body.domains.ai_concentration.updated_at).toBe(
+      "2026-03-19T16:00:00Z",
+    );
+    expect(body.domains.energy_geo.updated_at).toBeNull();
+    expect(body.domains.contagion.updated_at).toBeNull();
   });
 
   it("returns null composite when SCORE_COMPOSITE is missing", async () => {

@@ -28,32 +28,22 @@ test.describe("Weekend Staleness Display", () => {
     }
   });
 
-  test("sector panel shows 'as of' timestamp consistent with composite", async ({
+  test("sector panels show per-domain 'as of' timestamps when aged", async ({
     page,
   }) => {
     await expect(page.getByTestId("composite-score-value")).toBeVisible();
 
-    const compositeAgeEl = page.getByTestId("composite-score-age");
-    const isAged = await compositeAgeEl.isVisible().catch(() => false);
-
     const sectorAgeEls = page.getByTestId("sector-panel-score-age");
+    const count = await sectorAgeEls.count();
 
-    if (isAged) {
-      // At least one sector panel should also show the "as of" line
-      const count = await sectorAgeEls.count();
-      expect(count).toBeGreaterThan(0);
-
-      const sectorText = await sectorAgeEls.first().textContent();
-      expect(sectorText).toContain("as of");
-      expect(sectorText).toContain("ET");
-
-      // Composite and sector timestamps should match (same data source)
-      const compositeText = await compositeAgeEl.textContent();
-      expect(sectorText).toBe(compositeText);
-    } else {
-      // Fresh data -- no sector panels should show "as of" either
-      await expect(sectorAgeEls).toHaveCount(0);
+    if (count > 0) {
+      // At least one domain has stale data -- verify format
+      const text = await sectorAgeEls.first().textContent();
+      expect(text).toContain("as of");
+      expect(text).toContain("ET");
+      expect(text).toMatch(/Mon|Tue|Wed|Thu|Fri|Sat|Sun/);
     }
+    // If count is 0, all domain scores are either fresh or null -- both valid
   });
 
   test("sector panel fetches framework-aware scores after toggle", async ({

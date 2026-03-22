@@ -34,6 +34,7 @@ interface ScoresResponse {
       weight: number;
       level: string | null;
       color: string | null;
+      updated_at: string | null;
     }
   >;
   updated_at: string | null;
@@ -165,7 +166,7 @@ export function SectorPanel({
             >
               {annotateText(domain.description)}
             </div>
-            {scores?.updated_at && isScoreAged(scores.updated_at) && (
+            {domainScore?.updated_at && isScoreAged(domainScore.updated_at) && (
               <div
                 data-testid="sector-panel-score-age"
                 style={{
@@ -175,7 +176,7 @@ export function SectorPanel({
                   marginTop: 1,
                 }}
               >
-                {formatScoreTimestamp(scores.updated_at)}
+                {formatScoreTimestamp(domainScore.updated_at!)}
               </div>
             )}
           </div>

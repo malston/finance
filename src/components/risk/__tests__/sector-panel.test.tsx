@@ -41,12 +41,14 @@ const MOCK_SCORES = {
       level: "HIGH",
       weight: 0.3,
       color: "#f97316",
+      updated_at: "2026-03-20T15:00:00Z",
     },
     contagion: {
       score: 61,
       level: "HIGH",
       weight: 0.25,
       color: "#f97316",
+      updated_at: "2026-03-20T15:00:00Z",
     },
   },
   updated_at: "2026-03-20T15:00:00Z",
@@ -250,7 +252,21 @@ describe("SectorPanel", () => {
       if (url.includes("/api/risk/scores")) {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ ...MOCK_SCORES, updated_at: twoHoursAgo }),
+          json: async () => ({
+            ...MOCK_SCORES,
+            updated_at: twoHoursAgo,
+            domains: {
+              ...MOCK_SCORES.domains,
+              private_credit: {
+                ...MOCK_SCORES.domains.private_credit,
+                updated_at: twoHoursAgo,
+              },
+              contagion: {
+                ...MOCK_SCORES.domains.contagion,
+                updated_at: twoHoursAgo,
+              },
+            },
+          }),
         });
       }
       if (url.includes("/api/risk/timeseries")) {
@@ -282,7 +298,21 @@ describe("SectorPanel", () => {
       if (url.includes("/api/risk/scores")) {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ ...MOCK_SCORES, updated_at: oneMinAgo }),
+          json: async () => ({
+            ...MOCK_SCORES,
+            updated_at: oneMinAgo,
+            domains: {
+              ...MOCK_SCORES.domains,
+              private_credit: {
+                ...MOCK_SCORES.domains.private_credit,
+                updated_at: oneMinAgo,
+              },
+              contagion: {
+                ...MOCK_SCORES.domains.contagion,
+                updated_at: oneMinAgo,
+              },
+            },
+          }),
         });
       }
       if (url.includes("/api/risk/timeseries")) {
