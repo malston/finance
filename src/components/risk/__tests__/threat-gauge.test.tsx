@@ -79,4 +79,21 @@ describe("ThreatGauge", () => {
     expect(screen.getByTestId("gauge-score")).toHaveTextContent("100");
     expect(screen.getByTestId("gauge-label")).toHaveTextContent("CRITICAL");
   });
+
+  it("renders -- when score is null", () => {
+    render(<ThreatGauge score={null} color="#475569" />);
+    expect(screen.getByTestId("gauge-score")).toHaveTextContent("--");
+  });
+
+  it("does not render a threat level label when score is null", () => {
+    render(<ThreatGauge score={null} color="#475569" />);
+    expect(screen.getByTestId("gauge-label")).toHaveTextContent("");
+  });
+
+  it("does not render score arc when score is null", () => {
+    const { container } = render(<ThreatGauge score={null} color="#475569" />);
+    expect(
+      container.querySelector("[data-testid='gauge-arc']"),
+    ).not.toBeInTheDocument();
+  });
 });

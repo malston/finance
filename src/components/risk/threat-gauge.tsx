@@ -2,7 +2,7 @@ import { useId } from "react";
 import { threatLabel } from "@/lib/theme";
 
 interface ThreatGaugeProps {
-  score: number;
+  score: number | null;
   color: string;
   size?: number;
 }
@@ -10,9 +10,11 @@ interface ThreatGaugeProps {
 /**
  * Semicircular arc gauge displaying a threat score (0-100).
  * Renders an SVG arc from bottom-left to bottom-right (270 degrees sweep).
+ * When score is null, displays "--" with no threat level label.
  */
 export function ThreatGauge({ score, color, size = 90 }: ThreatGaugeProps) {
-  const label = threatLabel(score);
+  const hasScore = score !== null;
+  const label = hasScore ? threatLabel(score) : "";
   const cx = size / 2;
   const cy = size / 2;
   const r = size * 0.38;
@@ -21,7 +23,9 @@ export function ThreatGauge({ score, color, size = 90 }: ThreatGaugeProps) {
   // Arc spans 270 degrees, starting at 135 degrees (bottom-left)
   const startAngle = 135;
   const totalSweep = 270;
-  const scoreAngle = (Math.min(Math.max(score, 0), 100) / 100) * totalSweep;
+  const scoreAngle = hasScore
+    ? (Math.min(Math.max(score, 0), 100) / 100) * totalSweep
+    : 0;
 
   const uniqueId = useId();
   const filterId = `glow-${uniqueId}`;
@@ -80,7 +84,7 @@ export function ThreatGauge({ score, color, size = 90 }: ThreatGaugeProps) {
         fontSize={size * 0.24}
         fontWeight={700}
       >
-        {Math.round(score)}
+        {hasScore ? Math.round(score) : "--"}
       </text>
 
       {/* Level label */}
