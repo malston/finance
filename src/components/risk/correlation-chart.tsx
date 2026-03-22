@@ -126,7 +126,10 @@ export function CorrelationChart() {
           </div>
           <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>
             BDC ↔ Big Tech 30-day rolling correlation — above{" "}
-            {contagionThreshold} signals contagion
+            {contagionThreshold}{" "}
+            {framework === "yardeni"
+              ? "signals extreme correlation"
+              : "signals contagion"}
           </div>
         </div>
         <div style={{ textAlign: "right" }}>

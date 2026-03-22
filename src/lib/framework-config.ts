@@ -66,7 +66,7 @@ export function parseFramework(param: string | null): Framework {
   if (param === "bookstaber" || param === "yardeni") {
     return param;
   }
-  if (param) {
+  if (param && process.env.NODE_ENV !== "production") {
     console.warn(
       `Unrecognized framework "${param}", defaulting to "bookstaber"`,
     );

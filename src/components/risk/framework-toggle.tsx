@@ -29,6 +29,7 @@ export function FrameworkToggle() {
         const active = framework === seg.value;
         return (
           <button
+            type="button"
             key={seg.value}
             aria-pressed={active}
             onClick={() => setFramework(seg.value)}
