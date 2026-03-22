@@ -62,6 +62,8 @@ pnpm dev   # http://localhost:3000
 
 Composite score = weighted average of the four domain scores. Threat levels: LOW (0-25), ELEVATED (26-50), HIGH (51-75), CRITICAL (76-100).
 
+For detailed explanations of each domain, how to interpret scores, and what to watch for, see [Interpreting the Dashboard](docs/interpreting-the-dashboard.md).
+
 ## API Endpoints
 
 All routes are under `/api/risk/`.
