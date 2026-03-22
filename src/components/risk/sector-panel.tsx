@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { C } from "@/lib/theme";
 import type { DomainConfig } from "@/lib/domain-config";
+import { useFramework } from "@/lib/framework-context";
+import { isScoreAged, formatScoreTimestamp } from "@/lib/format-score-age";
 import { useSourceHealth } from "@/hooks/use-source-health";
 import { useFreshness } from "@/hooks/use-freshness";
 import { ThreatGauge } from "./threat-gauge";
@@ -61,13 +63,14 @@ export function SectorPanel({
   defaultExpanded = false,
 }: SectorPanelProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const { framework } = useFramework();
   const { isTickerStale, getTickerStaleness } = useSourceHealth();
   const { getTickerFreshness } = useFreshness();
 
   const { data: scores } = useQuery<ScoresResponse>({
-    queryKey: ["risk-scores"],
+    queryKey: ["risk-scores", framework],
     queryFn: async () => {
-      const res = await fetch("/api/risk/scores");
+      const res = await fetch(`/api/risk/scores?framework=${framework}`);
       if (!res.ok) throw new Error("Failed to fetch scores");
       return res.json();
     },
@@ -162,6 +165,19 @@ export function SectorPanel({
             >
               {annotateText(domain.description)}
             </div>
+            {scores?.updated_at && isScoreAged(scores.updated_at) && (
+              <div
+                data-testid="sector-panel-score-age"
+                style={{
+                  fontSize: 10,
+                  color: C.textDim,
+                  fontFamily: "var(--font-mono)",
+                  marginTop: 1,
+                }}
+              >
+                {formatScoreTimestamp(scores.updated_at)}
+              </div>
+            )}
           </div>
         </div>
 
