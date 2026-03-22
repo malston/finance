@@ -46,6 +46,9 @@ def main() -> None:
     interval = int(os.environ.get("COMPUTE_INTERVAL_SECONDS", "300"))
     scoring_config = load_scoring_config()
 
+    yardeni_config_path = os.path.join(os.path.dirname(__file__), "scoring_config_yardeni.yaml")
+    yardeni_config = load_scoring_config(yardeni_config_path)
+
     alert_config_path = os.path.join(os.path.dirname(__file__), "alert_config.yaml")
     alert_config = load_alert_config(alert_config_path)
     logger.info("Starting correlation service, interval=%ds", interval)
@@ -108,6 +111,52 @@ def main() -> None:
                 logger.warning("Composite score: skipped (insufficient data)")
         except Exception:
             logger.exception("Composite scoring failed")
+
+        # Yardeni scoring pass
+        try:
+            ypc = score_private_credit(db_url, yardeni_config, ticker_prefix="YARDENI_")
+            if ypc is not None:
+                logger.info("Yardeni private credit score: %.2f", ypc)
+            else:
+                logger.warning("Yardeni private credit score: skipped (insufficient data)")
+        except Exception:
+            logger.exception("Yardeni private credit scoring failed")
+
+        try:
+            yai = score_ai_concentration(db_url, yardeni_config, ticker_prefix="YARDENI_")
+            if yai is not None:
+                logger.info("Yardeni AI concentration score: %.2f", yai)
+            else:
+                logger.warning("Yardeni AI concentration score: skipped (insufficient data)")
+        except Exception:
+            logger.exception("Yardeni AI concentration scoring failed")
+
+        try:
+            yeg = score_energy_geo(db_url, yardeni_config, ticker_prefix="YARDENI_")
+            if yeg is not None:
+                logger.info("Yardeni energy/geo score: %.2f", yeg)
+            else:
+                logger.warning("Yardeni energy/geo score: skipped (insufficient data)")
+        except Exception:
+            logger.exception("Yardeni energy/geo scoring failed")
+
+        try:
+            yct = score_contagion(db_url, yardeni_config, ticker_prefix="YARDENI_")
+            if yct is not None:
+                logger.info("Yardeni contagion score: %.2f", yct)
+            else:
+                logger.warning("Yardeni contagion score: skipped (insufficient data)")
+        except Exception:
+            logger.exception("Yardeni contagion scoring failed")
+
+        try:
+            ycomp = score_composite(db_url, yardeni_config, ticker_prefix="YARDENI_")
+            if ycomp is not None:
+                logger.info("Yardeni composite score: %.2f", ycomp)
+            else:
+                logger.warning("Yardeni composite score: skipped (insufficient data)")
+        except Exception:
+            logger.exception("Yardeni composite scoring failed")
 
         try:
             fired = evaluate_rules(db_url, alert_config)

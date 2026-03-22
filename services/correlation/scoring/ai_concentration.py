@@ -73,7 +73,7 @@ def score_ai_concentration_from_values(
     return compute_composite_score(sub_scores, ac_config)
 
 
-def score_ai_concentration(db_url: str, config: dict[str, Any]) -> float | None:
+def score_ai_concentration(db_url: str, config: dict[str, Any], ticker_prefix: str = "") -> float | None:
     """Compute AI Concentration score and write it to TimescaleDB.
 
     Reads SPY_RSP_RATIO, SMH, and SPY from the time_series table, computes 3
@@ -113,7 +113,7 @@ def score_ai_concentration(db_url: str, config: dict[str, Any]) -> float | None:
             logger.warning("AI Concentration: no input data available, skipping score write")
             return None
 
-        write_score(conn, "SCORE_AI_CONCENTRATION", score)
+        write_score(conn, f"{ticker_prefix}SCORE_AI_CONCENTRATION", score)
     finally:
         conn.close()
 

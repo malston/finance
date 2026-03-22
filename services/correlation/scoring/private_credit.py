@@ -40,7 +40,7 @@ def _fetch_value_days_ago(
     return row[0] if row else None
 
 
-def score_private_credit(db_url: str, config: dict[str, Any]) -> float | None:
+def score_private_credit(db_url: str, config: dict[str, Any], ticker_prefix: str = "") -> float | None:
     """Compute Private Credit Stress score and write it to TimescaleDB.
 
     Reads current market data from the time_series table, computes 4
@@ -97,7 +97,7 @@ def score_private_credit(db_url: str, config: dict[str, Any]) -> float | None:
             logger.warning("Private Credit: no input data available, skipping score write")
             return None
 
-        write_score(conn, "SCORE_PRIVATE_CREDIT", score)
+        write_score(conn, f"{ticker_prefix}SCORE_PRIVATE_CREDIT", score)
     finally:
         conn.close()
 

@@ -131,7 +131,7 @@ def score_energy_geo_from_values(
     return compute_composite_score(sub_scores, eg_config)
 
 
-def score_energy_geo(db_url: str, config: dict[str, Any]) -> float | None:
+def score_energy_geo(db_url: str, config: dict[str, Any], ticker_prefix: str = "") -> float | None:
     """Compute Energy/Geopolitical score and write it to TimescaleDB.
 
     Reads crude oil prices and EWT from the time_series table, computes 3
@@ -189,7 +189,7 @@ def score_energy_geo(db_url: str, config: dict[str, Any]) -> float | None:
             logger.warning("Energy/Geo: no input data available, skipping score write")
             return None
 
-        write_score(conn, "SCORE_ENERGY_GEO", score)
+        write_score(conn, f"{ticker_prefix}SCORE_ENERGY_GEO", score)
     finally:
         conn.close()
 
