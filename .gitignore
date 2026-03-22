@@ -65,3 +65,4 @@ __pycache__/
 .vault/.dispatcher-state.json
 .vault/.vlt.lock
 .vault/.guard/
+.vault/.nd-shared.yaml

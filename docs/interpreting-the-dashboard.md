@@ -49,10 +49,10 @@ enormous, opaque, and has historically been where cracks appear first.
 
 | Score   | Level    | Color  | What it means                                                                                                                                                                  |
 | ------- | -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 0--25   | LOW      | Green  | Markets are functioning normally. Risk indicators are within historical norms. No action needed.                                                                               |
-| 26--50  | ELEVATED | Yellow | Some indicators are above normal. Worth paying attention but not alarming on its own.                                                                                          |
-| 51--75  | HIGH     | Orange | Multiple risk indicators are flashing warnings. Review your portfolio exposure. Consider whether you are comfortable with your current risk level.                             |
-| 76--100 | CRITICAL | Red    | Systemic stress is widespread. Correlations are likely elevated, meaning diversification may not protect you. This is the time to act on whatever risk plan you have in place. |
+| 0-25   | LOW      | Green  | Markets are functioning normally. Risk indicators are within historical norms. No action needed.                                                                               |
+| 26-50  | ELEVATED | Yellow | Some indicators are above normal. Worth paying attention but not alarming on its own.                                                                                          |
+| 51-75  | HIGH     | Orange | Multiple risk indicators are flashing warnings. Review your portfolio exposure. Consider whether you are comfortable with your current risk level.                             |
+| 76-100 | CRITICAL | Red    | Systemic stress is widespread. Correlations are likely elevated, meaning diversification may not protect you. This is the time to act on whatever risk plan you have in place. |
 
 ### The Domain Badges
 
@@ -395,9 +395,9 @@ Different data sources update at different frequencies, so the thresholds vary:
 
 | Source   | Tickers affected                                   | Green (live) | Yellow (stale) | Red (offline) |
 | -------- | -------------------------------------------------- | ------------ | -------------- | ------------- |
-| Finnhub  | All stock/ETF prices (OWL, ARCC, NVDA, VIXY, etc.) | Under 15 min | 15 min -- 1 hr | Over 1 hr     |
-| FRED     | HY Credit Spread (`BAMLH0A0HYM2`)                  | Under 24 hr  | 24 -- 48 hr    | Over 48 hr    |
-| Computed | SPY/RSP Ratio, CORR, domain scores                 | Under 24 hr  | 24 -- 48 hr    | Over 48 hr    |
+| Finnhub  | All stock/ETF prices (OWL, ARCC, NVDA, VIXY, etc.) | Under 15 min | 15 min - 1 hr  | Over 1 hr     |
+| FRED     | HY Credit Spread (`BAMLH0A0HYM2`)                  | Under 24 hr  | 24 - 48 hr     | Over 48 hr    |
+| Computed | SPY/RSP Ratio, CORR, domain scores                 | Under 24 hr  | 24 - 48 hr     | Over 48 hr    |
 
 ### What to Do When You See Stale Data
 
