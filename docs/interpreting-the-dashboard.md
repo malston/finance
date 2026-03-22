@@ -68,7 +68,7 @@ immediately tell you where the problem is.
 
 ### 3.1 Private Credit Stress (weight: 30%)
 
-**What it measures and why it matters**
+#### What it measures and why it matters
 
 Private credit is the market where non-bank lenders make loans to companies that
 cannot easily borrow from traditional banks. These loans are typically illiquid --
@@ -81,7 +81,7 @@ BDC investors are getting nervous, and/or the private credit market is showing s
 of strain. Because private credit is a $1.7 trillion market with limited
 transparency, problems here can grow large before they become visible.
 
-**Key indicators**
+#### Key indicators
 
 - **HY Credit Spread** (`BAMLH0A0HYM2`): The extra yield -- measured in basis
   points, where 100 basis points = 1 percentage point -- that investors demand to hold
@@ -108,7 +108,7 @@ transparency, problems here can grow large before they become visible.
   corporate bonds. When HYG drops, it means investors are selling risky bonds --
   a sign of credit stress.
 
-**Sub-component scoring**
+#### Sub-component scoring
 
 The Private Credit domain score (0-100) is computed from four sub-components:
 
@@ -121,7 +121,7 @@ The Private Credit domain score (0-100) is computed from four sub-components:
 
 The domain score is the weighted sum of these four sub-component scores.
 
-**What to watch for**
+#### What to watch for
 
 - HY spreads rising above 500 basis points while BDC prices are simultaneously
   falling -- this suggests credit stress is real, not just a data blip.
@@ -134,7 +134,7 @@ The domain score is the weighted sum of these four sub-component scores.
 
 ### 3.2 AI / Tech Concentration (weight: 20%)
 
-**What it measures and why it matters**
+#### What it measures and why it matters
 
 A small number of giant technology companies now dominate the stock market by
 market capitalization. When the largest 5-10 stocks make up an outsized share of
@@ -146,7 +146,7 @@ This domain measures how concentrated the stock market has become and whether
 that concentration is increasing. If you own an S&P 500 index fund, you may have
 far more exposure to a few tech companies than you realize.
 
-**Key indicators**
+#### Key indicators
 
 - **SPY/RSP Ratio** (Cap-Weight vs Equal-Weight Spread): SPY is the S&P 500
   weighted by company size (so the biggest companies dominate). RSP is the same 500
@@ -164,7 +164,7 @@ far more exposure to a few tech companies than you realize.
   AI depends on chips, SMH's performance relative to the broader market signals
   whether the AI trade is overheating.
 
-**Sub-component scoring**
+#### Sub-component scoring
 
 | Sub-component       | Weight | What it captures                                                | Score range inputs                |
 | ------------------- | ------ | --------------------------------------------------------------- | --------------------------------- |
@@ -172,7 +172,7 @@ far more exposure to a few tech companies than you realize.
 | SMH Relative Perf.  | 30%    | How much semiconductors are outperforming the broad market      | 0% outperformance = 0, 20%+ = 100 |
 | Top-10 Weight Proxy | 30%    | Another measure of concentration using the SPY/RSP ratio level  | Ratio at 1.5 = 0, 2.5+ = 100      |
 
-**What to watch for**
+#### What to watch for
 
 - The SPY/RSP ratio climbing steadily while the semiconductor ETF outperforms --
   the market is becoming more top-heavy and more dependent on the AI trade.
@@ -186,7 +186,7 @@ far more exposure to a few tech companies than you realize.
 
 ### 3.3 Energy & Geopolitical (weight: 25%)
 
-**What it measures and why it matters**
+#### What it measures and why it matters
 
 Energy prices affect every part of the economy. A spike in crude oil raises costs
 for businesses and consumers, squeezes corporate margins, and can trigger
@@ -197,7 +197,7 @@ can disrupt both energy markets and the tech supply chain.
 This domain tracks energy price levels, energy price volatility, and a proxy for
 Taiwan-related geopolitical risk.
 
-**Key indicators**
+#### Key indicators
 
 - **CL=F** (WTI Crude Oil Futures): The benchmark price for U.S. crude oil, quoted
   in dollars per barrel. Oil at $50-70 is relatively calm. Above $100, it starts
@@ -218,7 +218,7 @@ Taiwan-related geopolitical risk.
   restrictions) that would have enormous downstream effects on the tech sector
   and global economy.
 
-**Sub-component scoring**
+#### Sub-component scoring
 
 | Sub-component        | Weight | What it captures                                         | Score range inputs                   |
 | -------------------- | ------ | -------------------------------------------------------- | ------------------------------------ |
@@ -231,7 +231,7 @@ oil price swings are more destabilizing than a steadily high price level. The EW
 drawdown component serves as a geopolitical canary -- if Taiwan's market drops
 sharply, something significant may be happening.
 
-**What to watch for**
+#### What to watch for
 
 - Oil above $100/barrel with rising volatility -- this is the combination that
   historically precedes economic disruptions.
@@ -246,7 +246,7 @@ sharply, something significant may be happening.
 
 ### 3.4 Cross-Domain Contagion (weight: 25%)
 
-**What it measures and why it matters**
+#### What it measures and why it matters
 
 This is the domain that ties everything together. It does not track a specific
 sector -- instead, it measures whether the other three domains are starting to move
@@ -257,7 +257,7 @@ panic is overriding sector-specific fundamentals.
 
 This domain also tracks overall market fear through the VIX.
 
-**Key indicators**
+#### Key indicators
 
 - **CORR** (Max Pairwise Correlation): The highest of the three rolling
   30-day correlations (Credit-Tech, Credit-Energy, Tech-Energy). This is a
@@ -273,7 +273,7 @@ This domain also tracks overall market fear through the VIX.
   index directly, so its price level differs from the VIX value -- but it moves in
   the same direction.
 
-**Sub-component scoring**
+#### Sub-component scoring
 
 | Sub-component    | Weight | What it captures                                              | Score range inputs  |
 | ---------------- | ------ | ------------------------------------------------------------- | ------------------- |
@@ -285,7 +285,7 @@ measure of contagion -- the core thesis of this monitor. The VIX provides contex
 high correlation plus high VIX means the contagion is happening in a fearful market,
 which is far more dangerous than high correlation in a calm market.
 
-**What to watch for**
+#### What to watch for
 
 - The max correlation crossing above 0.5 while the VIX is above 25 -- this is
   the central warning signal of the entire dashboard. It means contagion is
