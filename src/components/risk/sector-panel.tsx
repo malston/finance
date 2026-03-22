@@ -104,7 +104,7 @@ export function SectorPanel({
 
   return (
     <div
-      data-testid="sector-panel"
+      data-testid={`sector-panel-${domain.scoreKey}`}
       style={{
         background: C.panel,
         border: `1px solid ${expanded ? `${domain.color}60` : C.panelBorder}`,

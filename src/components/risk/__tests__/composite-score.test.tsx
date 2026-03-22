@@ -400,6 +400,37 @@ describe("CompositeScore", () => {
     );
   });
 
+  it("has data-testid 'composite-score' on root element in all states", async () => {
+    // Loading state
+    mockFetch.mockReturnValue(new Promise(() => {}));
+    render(<CompositeScore />, { wrapper: createWrapper() });
+    expect(screen.getByTestId("composite-score")).toBeInTheDocument();
+    expect(screen.getByTestId("composite-score-loading")).toBeInTheDocument();
+    cleanup();
+    mockFetch.mockReset();
+
+    // Error state
+    mockFetch.mockRejectedValueOnce(new Error("Network error"));
+    render(<CompositeScore />, { wrapper: createWrapper() });
+    await waitFor(() => {
+      expect(screen.getByTestId("composite-score")).toBeInTheDocument();
+      expect(screen.getByTestId("composite-score-error")).toBeInTheDocument();
+    });
+    cleanup();
+    mockFetch.mockReset();
+
+    // Loaded state
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => SCORES_RESPONSE,
+    });
+    render(<CompositeScore />, { wrapper: createWrapper() });
+    await waitFor(() => {
+      expect(screen.getByTestId("composite-score")).toBeInTheDocument();
+      expect(screen.getByTestId("composite-score-value")).toBeInTheDocument();
+    });
+  });
+
   it("applies domain-specific colors to badges", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
