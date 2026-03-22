@@ -25,7 +25,7 @@ alerts:
     - id: vix_spike
       name: "VIX above 30"
       condition: "vix > 30"
-      ticker: VIX
+      ticker: VIXY
       threshold: 30
       operator: ">"
       consecutive_readings: 1

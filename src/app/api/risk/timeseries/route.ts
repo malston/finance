@@ -13,7 +13,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const daysParam = url.searchParams.get("days");
-  const days = daysParam ? parseInt(daysParam, 10) : 79;
+  const days = Math.min(daysParam ? parseInt(daysParam, 10) : 79, 365);
 
   if (!Number.isFinite(days) || days < 1) {
     return NextResponse.json(

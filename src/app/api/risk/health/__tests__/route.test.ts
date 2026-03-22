@@ -1,25 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockQuery } = vi.hoisted(() => {
-  const mockQuery = vi.fn();
-  return { mockQuery };
+const { mockQuerySourceHealth } = vi.hoisted(() => {
+  const mockQuerySourceHealth = vi.fn();
+  return { mockQuerySourceHealth };
 });
 
 vi.mock("@/lib/timescaledb", () => ({
-  query: mockQuery,
+  querySourceHealth: mockQuerySourceHealth,
 }));
 
 import { GET } from "@/app/api/risk/health/route";
 
 describe("GET /api/risk/health", () => {
   beforeEach(() => {
-    mockQuery.mockReset();
+    mockQuerySourceHealth.mockReset();
   });
 
   it("returns health status for all sources", async () => {
     const now = new Date();
     const recentSuccess = new Date(now.getTime() - 5 * 60 * 1000); // 5 min ago
-    mockQuery.mockResolvedValueOnce([
+    mockQuerySourceHealth.mockResolvedValueOnce([
       {
         source: "finnhub",
         last_success: recentSuccess.toISOString(),
@@ -50,7 +50,7 @@ describe("GET /api/risk/health", () => {
     // FRED: 20 min ago (<24h threshold -> not stale)
     const fredSuccess = new Date(now.getTime() - 20 * 60 * 1000);
 
-    mockQuery.mockResolvedValueOnce([
+    mockQuerySourceHealth.mockResolvedValueOnce([
       {
         source: "finnhub",
         last_success: finnhubSuccess.toISOString(),
@@ -84,7 +84,7 @@ describe("GET /api/risk/health", () => {
   });
 
   it("marks source as stale when last_success is null", async () => {
-    mockQuery.mockResolvedValueOnce([
+    mockQuerySourceHealth.mockResolvedValueOnce([
       {
         source: "finnhub",
         last_success: null,
@@ -105,7 +105,7 @@ describe("GET /api/risk/health", () => {
   });
 
   it("includes consecutive_failures in response", async () => {
-    mockQuery.mockResolvedValueOnce([
+    mockQuerySourceHealth.mockResolvedValueOnce([
       {
         source: "finnhub",
         last_success: new Date().toISOString(),
@@ -122,7 +122,9 @@ describe("GET /api/risk/health", () => {
   });
 
   it("returns 500 on database error", async () => {
-    mockQuery.mockRejectedValueOnce(new Error("connection refused"));
+    mockQuerySourceHealth.mockRejectedValueOnce(
+      new Error("connection refused"),
+    );
 
     const response = await GET();
 
@@ -131,8 +133,31 @@ describe("GET /api/risk/health", () => {
     expect(body.error).toBeTruthy();
   });
 
+  it("defaults unknown sources to stale (conservative)", async () => {
+    const now = new Date();
+    const recentSuccess = new Date(now.getTime() - 5 * 60 * 1000);
+    mockQuerySourceHealth.mockResolvedValueOnce([
+      {
+        source: "unknown_source",
+        last_success: recentSuccess.toISOString(),
+        last_error: null,
+        last_error_msg: null,
+        consecutive_failures: 0,
+      },
+    ]);
+
+    const response = await GET();
+    const body = await response.json();
+
+    const unknown = body.sources.find(
+      (s: { source: string }) => s.source === "unknown_source",
+    );
+    expect(unknown.stale).toBe(true);
+    expect(unknown.staleness_threshold).toBe("unknown");
+  });
+
   it("returns empty sources array when no health data exists", async () => {
-    mockQuery.mockResolvedValueOnce([]);
+    mockQuerySourceHealth.mockResolvedValueOnce([]);
 
     const response = await GET();
     const body = await response.json();

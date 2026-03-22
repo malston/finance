@@ -56,3 +56,12 @@ test-scripts/
 .venv/
 __pycache__/
 .pytest_cache/
+
+# Paivot runtime state (managed by pvg)
+.vault/issues/
+.vault/.nd.yaml
+.vault/.piv-loop-state.json
+.vault/.piv-loop-snapshot.json
+.vault/.dispatcher-state.json
+.vault/.vlt.lock
+.vault/.guard/

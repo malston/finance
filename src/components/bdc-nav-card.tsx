@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { C } from "@/lib/theme";
 
 interface DiscountRow {
@@ -17,10 +17,10 @@ interface BDCDetail {
   discount: number | null;
 }
 
-type CardState =
-  | { status: "loading" }
-  | { status: "loaded"; avgDiscount: number; details: BDCDetail[] }
-  | { status: "error" };
+interface BDCData {
+  avgDiscount: number | null;
+  details: BDCDetail[];
+}
 
 const BDC_TICKERS = ["OWL", "ARCC", "BXSL", "OBDC"];
 const NAV_TICKERS = BDC_TICKERS.map((t) => `NAV_${t}`);
@@ -31,52 +31,46 @@ function discountColor(discount: number): string {
   return C.red;
 }
 
+async function fetchBDCData(): Promise<BDCData> {
+  const [discountRes, pricesRes] = await Promise.all([
+    fetch("/api/risk/timeseries?ticker=BDC_AVG_NAV_DISCOUNT&days=1"),
+    fetch(
+      `/api/risk/latest-prices?tickers=${[...NAV_TICKERS, ...BDC_TICKERS].join(",")}`,
+    ),
+  ]);
+
+  if (!discountRes.ok || !pricesRes.ok) {
+    throw new Error("Failed to fetch BDC data");
+  }
+
+  const discountData: DiscountRow[] = await discountRes.json();
+  const priceData: DiscountRow[] = await pricesRes.json();
+
+  const priceMap = new Map<string, number>();
+  for (const row of priceData) {
+    priceMap.set(row.ticker, row.value);
+  }
+
+  const avgDiscount =
+    discountData.length > 0
+      ? discountData[discountData.length - 1].value
+      : null;
+
+  const details: BDCDetail[] = BDC_TICKERS.map((ticker) => {
+    const nav = priceMap.get(`NAV_${ticker}`) ?? null;
+    const price = priceMap.get(ticker) ?? null;
+    const discount = nav && price ? (price - nav) / nav : null;
+    return { ticker, nav, price, discount };
+  });
+
+  return { avgDiscount, details };
+}
+
 export function BDCNavCard() {
-  const [state, setState] = useState<CardState>({ status: "loading" });
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [discountRes, pricesRes] = await Promise.all([
-          fetch("/api/risk/timeseries?ticker=BDC_AVG_NAV_DISCOUNT&days=1"),
-          fetch(
-            `/api/risk/latest-prices?tickers=${[...NAV_TICKERS, ...BDC_TICKERS].join(",")}`,
-          ),
-        ]);
-
-        if (!discountRes.ok || !pricesRes.ok) {
-          setState({ status: "error" });
-          return;
-        }
-
-        const discountData: DiscountRow[] = await discountRes.json();
-        const priceData: DiscountRow[] = await pricesRes.json();
-
-        const priceMap = new Map<string, number>();
-        for (const row of priceData) {
-          priceMap.set(row.ticker, row.value);
-        }
-
-        const avgDiscount =
-          discountData.length > 0
-            ? discountData[discountData.length - 1].value
-            : 0;
-
-        const details: BDCDetail[] = BDC_TICKERS.map((ticker) => {
-          const nav = priceMap.get(`NAV_${ticker}`) ?? null;
-          const price = priceMap.get(ticker) ?? null;
-          const discount = nav && price ? (price - nav) / nav : null;
-          return { ticker, nav, price, discount };
-        });
-
-        setState({ status: "loaded", avgDiscount, details });
-      } catch {
-        setState({ status: "error" });
-      }
-    }
-
-    fetchData();
-  }, []);
+  const { data, isLoading, isError } = useQuery<BDCData>({
+    queryKey: ["bdc-nav"],
+    queryFn: fetchBDCData,
+  });
 
   return (
     <div
@@ -100,7 +94,7 @@ export function BDCNavCard() {
         BDC NAV Discount
       </div>
 
-      {state.status === "loading" && (
+      {isLoading && (
         <div
           data-testid="bdc-nav-loading"
           style={{
@@ -113,7 +107,7 @@ export function BDCNavCard() {
         </div>
       )}
 
-      {state.status === "error" && (
+      {isError && (
         <div
           data-testid="bdc-nav-error"
           style={{
@@ -130,7 +124,7 @@ export function BDCNavCard() {
         </div>
       )}
 
-      {state.status === "loaded" && (
+      {data && (
         <div>
           <div
             data-testid="bdc-nav-value"
@@ -138,11 +132,16 @@ export function BDCNavCard() {
               fontSize: 28,
               fontWeight: 700,
               fontFamily: "var(--font-mono)",
-              color: discountColor(state.avgDiscount),
+              color:
+                data.avgDiscount !== null
+                  ? discountColor(data.avgDiscount)
+                  : C.textMuted,
               marginBottom: 12,
             }}
           >
-            {(state.avgDiscount * 100).toFixed(1)}%
+            {data.avgDiscount !== null
+              ? `${(data.avgDiscount * 100).toFixed(1)}%`
+              : "--"}
           </div>
 
           <div data-testid="bdc-nav-table">
@@ -174,7 +173,7 @@ export function BDCNavCard() {
                 </tr>
               </thead>
               <tbody>
-                {state.details.map((row) => (
+                {data.details.map((row) => (
                   <tr key={row.ticker}>
                     <td
                       style={{

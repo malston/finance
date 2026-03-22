@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createWrapper } from "@/test/query-test-utils";
 import { SectorPanel } from "@/components/risk/sector-panel";
 import type { DomainConfig } from "@/lib/domain-config";
 import type { SourceHealthResponse } from "@/lib/source-health";
@@ -80,17 +80,6 @@ const ALL_HEALTHY: SourceHealthResponse = {
     },
   ],
 };
-
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
-  };
-}
 
 function mockFetches(health: SourceHealthResponse) {
   mockFetch.mockImplementation((url: string) => {

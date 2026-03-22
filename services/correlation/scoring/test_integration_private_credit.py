@@ -12,7 +12,8 @@ from datetime import datetime, timezone, timedelta
 import psycopg2
 import pytest
 
-from scoring.private_credit import score_private_credit, load_scoring_config
+from scoring.common import load_scoring_config
+from scoring.private_credit import score_private_credit
 
 
 @pytest.fixture(scope="module")
@@ -45,15 +46,16 @@ def db_conn(db_url):
 
 @pytest.fixture(autouse=True)
 def clean_test_data(db_conn):
-    """Remove test-seeded and computed score rows before and after each test."""
+    """Remove all rows for managed tickers before and after each test."""
     tickers_to_clean = [
         "BAMLH0A0HYM2",
         "BDC_AVG_NAV_DISCOUNT",
+        "BDC_VOLUME_PROXY",
         "SCORE_PRIVATE_CREDIT",
     ]
     with db_conn.cursor() as cur:
         cur.execute(
-            "DELETE FROM time_series WHERE ticker = ANY(%s) AND source IN ('test_seed', 'computed')",
+            "DELETE FROM time_series WHERE ticker = ANY(%s)",
             (tickers_to_clean,),
         )
     yield

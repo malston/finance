@@ -7,17 +7,16 @@ TimescaleDB and writes the result back as SCORE_PRIVATE_CREDIT.
 
 import logging
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
 from typing import Any
 
 import psycopg2
-import yaml
 
 from scoring.common import (
     compute_composite_score,
     fetch_latest_value,
     inverted_linear_score,
     linear_score,
+    write_score,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,36 +40,7 @@ def _fetch_value_days_ago(
     return row[0] if row else None
 
 
-def _write_score(
-    conn: psycopg2.extensions.connection,
-    score: float,
-) -> None:
-    """Write the computed score to time_series as SCORE_PRIVATE_CREDIT."""
-    now = datetime.now(timezone.utc)
-    with conn.cursor() as cur:
-        cur.execute(
-            "INSERT INTO time_series (time, ticker, value, source) "
-            "VALUES (%s, 'SCORE_PRIVATE_CREDIT', %s, 'computed') "
-            "ON CONFLICT (time, ticker) DO UPDATE SET "
-            "value = EXCLUDED.value, source = EXCLUDED.source",
-            (now, score),
-        )
-    conn.commit()
-
-
-def load_scoring_config(config_path: str | None = None) -> dict[str, Any]:
-    """Load scoring configuration from YAML file.
-
-    If config_path is not provided, uses scoring_config.yaml in the parent
-    directory of this module (services/correlation/).
-    """
-    if config_path is None:
-        config_path = str(Path(__file__).parent.parent / "scoring_config.yaml")
-    with open(config_path) as f:
-        return yaml.safe_load(f)
-
-
-def score_private_credit(db_url: str, config: dict[str, Any]) -> float:
+def score_private_credit(db_url: str, config: dict[str, Any]) -> float | None:
     """Compute Private Credit Stress score and write it to TimescaleDB.
 
     Reads current market data from the time_series table, computes 4
@@ -123,7 +93,11 @@ def score_private_credit(db_url: str, config: dict[str, Any]) -> float:
 
         score = compute_composite_score(sub_scores, pc_config)
 
-        _write_score(conn, score)
+        if score is None:
+            logger.warning("Private Credit: no input data available, skipping score write")
+            return None
+
+        write_score(conn, "SCORE_PRIVATE_CREDIT", score)
     finally:
         conn.close()
 

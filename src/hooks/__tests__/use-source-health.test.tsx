@@ -1,22 +1,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, waitFor, cleanup } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createWrapper } from "@/test/query-test-utils";
 import { useSourceHealth } from "@/hooks/use-source-health";
 import type { SourceHealthResponse } from "@/lib/source-health";
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
-
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
-  };
-}
 
 const HEALTHY_RESPONSE: SourceHealthResponse = {
   sources: [

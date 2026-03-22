@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { C } from "@/lib/theme";
 import {
   DOMAINS,
@@ -26,77 +27,69 @@ interface TimeSeriesRow {
   source: string;
 }
 
-const REFRESH_INTERVAL_MS = 60_000;
+async function fetchAllNews(): Promise<Record<string, NewsHeadline[]>> {
+  const results = await Promise.all(
+    DOMAINS.map(async (d) => {
+      const res = await fetch(`/api/risk/news?domain=${d.key}&limit=20`);
+      if (!res.ok)
+        throw new Error(`News fetch failed for ${d.key}: ${res.status}`);
+      const data: NewsHeadline[] = await res.json();
+      return [d.key, data] as const;
+    }),
+  );
 
-async function fetchNews(domain: string, limit = 20): Promise<NewsHeadline[]> {
-  try {
-    const res = await fetch(`/api/risk/news?domain=${domain}&limit=${limit}`);
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    const empty: NewsHeadline[] = [];
-    return empty;
+  const headlines: Record<string, NewsHeadline[]> = {};
+  for (const [key, data] of results) {
+    headlines[key] = data as NewsHeadline[];
   }
+  return headlines;
 }
 
-async function fetchDomainSentiment(ticker: string): Promise<number | null> {
-  try {
-    const res = await fetch(`/api/risk/timeseries?ticker=${ticker}&days=1`);
-    if (!res.ok) return null;
-    const rows: TimeSeriesRow[] = await res.json();
-    if (rows.length === 0) return null;
-    return rows[rows.length - 1].value;
-  } catch {
-    const noData: number | null = null;
-    return noData;
+async function fetchAllSentiments(): Promise<Record<string, number | null>> {
+  const results = await Promise.all(
+    DOMAINS.map(async (d) => {
+      const res = await fetch(`/api/risk/timeseries?ticker=${d.ticker}&days=1`);
+      if (!res.ok)
+        throw new Error(
+          `Sentiment fetch failed for ${d.ticker}: ${res.status}`,
+        );
+      const rows: TimeSeriesRow[] = await res.json();
+      if (rows.length === 0) return [d.key, null] as const;
+      return [d.key, rows[rows.length - 1].value] as const;
+    }),
+  );
+
+  const aggregates: Record<string, number | null> = {};
+  for (const [key, val] of results) {
+    aggregates[key] = val;
   }
+  return aggregates;
 }
 
 export function NewsSentimentSidebar() {
   const [activeDomain, setActiveDomain] = useState(0);
-  const [headlines, setHeadlines] = useState<Record<string, NewsHeadline[]>>(
-    {},
-  );
-  const [aggregates, setAggregates] = useState<Record<string, number | null>>(
-    {},
-  );
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  const refreshData = useCallback(async () => {
-    const newsPromises = DOMAINS.map((d) =>
-      fetchNews(d.key).then((data) => [d.key, data] as const),
-    );
-    const sentimentPromises = DOMAINS.map((d) =>
-      fetchDomainSentiment(d.ticker).then((val) => [d.key, val] as const),
-    );
+  const { data: headlines, isError: isHeadlinesError } = useQuery<
+    Record<string, NewsHeadline[]>
+  >({
+    queryKey: ["news-headlines"],
+    queryFn: fetchAllNews,
+    refetchInterval: 60_000,
+    staleTime: 55_000,
+  });
 
-    const newsResults = await Promise.all(newsPromises);
-    const sentimentResults = await Promise.all(sentimentPromises);
-
-    const newHeadlines: Record<string, NewsHeadline[]> = {};
-    for (const [key, data] of newsResults) {
-      newHeadlines[key] = data;
-    }
-
-    const newAggregates: Record<string, number | null> = {};
-    for (const [key, val] of sentimentResults) {
-      newAggregates[key] = val;
-    }
-
-    setHeadlines(newHeadlines);
-    setAggregates(newAggregates);
-    setLastRefresh(new Date());
-  }, []);
-
-  useEffect(() => {
-    refreshData();
-    const interval = setInterval(refreshData, REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [refreshData]);
+  const { data: aggregates, isError: isSentimentsError } = useQuery<
+    Record<string, number | null>
+  >({
+    queryKey: ["news-sentiments"],
+    queryFn: fetchAllSentiments,
+    refetchInterval: 60_000,
+    staleTime: 55_000,
+  });
 
   const domain = DOMAINS[activeDomain];
-  const domainHeadlines = headlines[domain.key] ?? [];
-  const domainAggregate = aggregates[domain.key] ?? null;
+  const domainHeadlines = headlines?.[domain.key] ?? [];
+  const domainAggregate = aggregates?.[domain.key] ?? null;
 
   return (
     <div
@@ -128,18 +121,6 @@ export function NewsSentimentSidebar() {
           <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
             News Sentiment
           </span>
-          {lastRefresh && (
-            <span
-              data-testid="refresh-timestamp"
-              style={{
-                fontSize: 9,
-                color: C.textDim,
-                fontFamily: "var(--font-mono)",
-              }}
-            >
-              {lastRefresh.toLocaleTimeString()}
-            </span>
-          )}
         </div>
       </div>
 
@@ -207,7 +188,19 @@ export function NewsSentimentSidebar() {
           maxHeight: 400,
         }}
       >
-        {domainHeadlines.length === 0 ? (
+        {isHeadlinesError || isSentimentsError ? (
+          <div
+            data-testid="news-error-indicator"
+            style={{
+              padding: "24px 14px",
+              textAlign: "center",
+              fontSize: 12,
+              color: C.orange,
+            }}
+          >
+            Unable to load headlines
+          </div>
+        ) : domainHeadlines.length === 0 ? (
           <div
             style={{
               padding: "24px 14px",

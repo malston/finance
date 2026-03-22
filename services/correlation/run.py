@@ -15,8 +15,12 @@ from alerting.dispatch import dispatch_alert, update_delivery_status
 from alerting.rules_engine import evaluate_rules, load_alert_config
 from correlator import compute_correlations
 from index_builder import compute_domain_indices
+from scoring.ai_concentration import score_ai_concentration
+from scoring.common import load_scoring_config
 from scoring.composite import score_composite
-from scoring.contagion import score_contagion, load_scoring_config
+from scoring.contagion import score_contagion
+from scoring.energy_geo import score_energy_geo
+from scoring.private_credit import score_private_credit
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,6 +63,24 @@ def main() -> None:
             compute_correlations(db_url)
         except Exception:
             logger.exception("Correlation computation failed")
+
+        try:
+            pc_score = score_private_credit(db_url, scoring_config)
+            logger.info("Private credit score: %.2f", pc_score)
+        except Exception:
+            logger.exception("Private credit scoring failed")
+
+        try:
+            ai_score = score_ai_concentration(db_url, scoring_config)
+            logger.info("AI concentration score: %.2f", ai_score)
+        except Exception:
+            logger.exception("AI concentration scoring failed")
+
+        try:
+            eg_score = score_energy_geo(db_url, scoring_config)
+            logger.info("Energy/geo score: %.2f", eg_score)
+        except Exception:
+            logger.exception("Energy/geo scoring failed")
 
         try:
             contagion_score = score_contagion(db_url, scoring_config)

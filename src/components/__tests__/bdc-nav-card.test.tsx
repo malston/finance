@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { createWrapper } from "@/test/query-test-utils";
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -95,19 +96,19 @@ describe("BDCNavCard", () => {
 
   it("renders the card title", async () => {
     setupMockFetch();
-    render(<BDCNavCard />);
+    render(<BDCNavCard />, { wrapper: createWrapper() });
     expect(screen.getByText("BDC NAV Discount")).toBeInTheDocument();
   });
 
   it("shows loading state initially", () => {
     mockFetch.mockReturnValue(new Promise(() => {}));
-    render(<BDCNavCard />);
+    render(<BDCNavCard />, { wrapper: createWrapper() });
     expect(screen.getByTestId("bdc-nav-loading")).toBeInTheDocument();
   });
 
   it("displays the average discount percentage", async () => {
     setupMockFetch();
-    render(<BDCNavCard />);
+    render(<BDCNavCard />, { wrapper: createWrapper() });
     await waitFor(() => {
       expect(screen.getByTestId("bdc-nav-value")).toBeInTheDocument();
     });
@@ -116,7 +117,7 @@ describe("BDCNavCard", () => {
 
   it("displays BDC ticker rows in the detail table", async () => {
     setupMockFetch();
-    render(<BDCNavCard />);
+    render(<BDCNavCard />, { wrapper: createWrapper() });
     await waitFor(() => {
       expect(screen.getByTestId("bdc-nav-table")).toBeInTheDocument();
     });
@@ -128,15 +129,39 @@ describe("BDCNavCard", () => {
 
   it("shows error state when fetch fails", async () => {
     mockFetch.mockRejectedValue(new Error("Network error"));
-    render(<BDCNavCard />);
+    render(<BDCNavCard />, { wrapper: createWrapper() });
     await waitFor(() => {
       expect(screen.getByTestId("bdc-nav-error")).toBeInTheDocument();
     });
   });
 
+  it("displays '--' in gray when no discount data exists", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("ticker=BDC_AVG_NAV_DISCOUNT")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [],
+        });
+      }
+      if (url.includes("/api/risk/latest-prices")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [...SAMPLE_NAV_DATA, ...SAMPLE_PRICE_DATA],
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(<BDCNavCard />, { wrapper: createWrapper() });
+    await waitFor(() => {
+      expect(screen.getByTestId("bdc-nav-value")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("bdc-nav-value").textContent).toBe("--");
+  });
+
   it("fetches discount data from timeseries endpoint", async () => {
     setupMockFetch();
-    render(<BDCNavCard />);
+    render(<BDCNavCard />, { wrapper: createWrapper() });
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalled();
     });

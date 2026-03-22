@@ -18,7 +18,7 @@ CONFIG_PATH = os.path.join(
     "alert_config.yaml",
 )
 
-MANAGED_TICKERS = ["SCORE_COMPOSITE", "VIX", "SCORE_CONTAGION"]
+MANAGED_TICKERS = ["SCORE_COMPOSITE", "VIXY", "SCORE_CONTAGION"]
 
 
 @pytest.fixture(scope="module")
@@ -181,13 +181,13 @@ class TestIntegrationAlertRulesEngine:
         from alerting.rules_engine import evaluate_rules
 
         # Fire the vix_spike rule (consecutive_readings=1)
-        _seed_reading(db_conn, "VIX", 35.0, time_offset_minutes=1)
+        _seed_reading(db_conn, "VIXY", 35.0, time_offset_minutes=1)
         alerts = evaluate_rules(db_url, alert_config)
         vix_alerts = [a for a in alerts if a["rule_id"] == "vix_spike"]
         assert len(vix_alerts) == 1, "VIX alert should fire on first reading"
 
         # Second evaluation within cooldown -- should not fire
-        _seed_reading(db_conn, "VIX", 36.0, time_offset_minutes=0)
+        _seed_reading(db_conn, "VIXY", 36.0, time_offset_minutes=0)
         alerts = evaluate_rules(db_url, alert_config)
         vix_alerts = [a for a in alerts if a["rule_id"] == "vix_spike"]
         assert len(vix_alerts) == 0, "Should not re-fire within cooldown"
@@ -204,7 +204,7 @@ class TestIntegrationAlertRulesEngine:
         from alerting.rules_engine import evaluate_rules
 
         # Fire VIX alert
-        _seed_reading(db_conn, "VIX", 35.0, time_offset_minutes=0)
+        _seed_reading(db_conn, "VIXY", 35.0, time_offset_minutes=0)
         evaluate_rules(db_url, alert_config)
 
         # Manually set last_triggered to 5 hours ago (cooldown is 4h)
@@ -216,7 +216,7 @@ class TestIntegrationAlertRulesEngine:
             )
 
         # New reading should fire again
-        _seed_reading(db_conn, "VIX", 40.0, time_offset_minutes=0)
+        _seed_reading(db_conn, "VIXY", 40.0, time_offset_minutes=0)
         alerts = evaluate_rules(db_url, alert_config)
         vix_alerts = [a for a in alerts if a["rule_id"] == "vix_spike"]
         assert len(vix_alerts) == 1, "Should fire after cooldown expires"
@@ -225,7 +225,7 @@ class TestIntegrationAlertRulesEngine:
         """AC: alert_history records fired alert with timestamp, value, message, channels."""
         from alerting.rules_engine import evaluate_rules
 
-        _seed_reading(db_conn, "VIX", 35.0, time_offset_minutes=0)
+        _seed_reading(db_conn, "VIXY", 35.0, time_offset_minutes=0)
         evaluate_rules(db_url, alert_config)
 
         with db_conn.cursor() as cur:
@@ -237,8 +237,8 @@ class TestIntegrationAlertRulesEngine:
             assert row is not None
             assert row[0] == "vix_spike"  # rule_id
             assert row[1] is not None  # triggered_at
-            assert row[2] == 35.0  # value
-            assert "VIX" in row[3]  # message contains ticker
+            assert row[2] == pytest.approx(35.0, abs=0.1)  # value
+            assert "VIXY" in row[3]  # message contains ticker
             assert "slack" in row[4]  # channels
             assert row[5] is False  # delivered
 

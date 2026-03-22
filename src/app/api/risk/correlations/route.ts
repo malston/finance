@@ -37,7 +37,7 @@ export async function GET(request: Request): Promise<Response> {
   if (daysParam !== null) {
     const parsedDays = Number.parseInt(daysParam, 10);
     if (!Number.isNaN(parsedDays) && parsedDays > 0) {
-      days = parsedDays;
+      days = Math.min(parsedDays, 365);
     }
   }
 

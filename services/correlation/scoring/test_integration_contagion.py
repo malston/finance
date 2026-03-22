@@ -12,11 +12,12 @@ from datetime import datetime, timezone, timedelta
 import psycopg2
 import pytest
 
-from scoring.contagion import score_contagion, load_scoring_config
+from scoring.common import load_scoring_config
+from scoring.contagion import score_contagion
 
 
 CORR_TICKERS = ["CORR_CREDIT_TECH", "CORR_CREDIT_ENERGY", "CORR_TECH_ENERGY"]
-ALL_MANAGED_TICKERS = CORR_TICKERS + ["VIX", "MOVE", "SCORE_CONTAGION"]
+ALL_MANAGED_TICKERS = CORR_TICKERS + ["VIXY", "SCORE_CONTAGION"]
 
 
 @pytest.fixture(scope="module")
@@ -55,6 +56,8 @@ def clean_test_data(db_conn):
             "DELETE FROM time_series WHERE ticker = ANY(%s)",
             (ALL_MANAGED_TICKERS,),
         )
+        cur.execute("DELETE FROM news_sentiment")
+        cur.execute("DELETE FROM insider_trades")
     yield
     with db_conn.cursor() as cur:
         cur.execute(
@@ -104,22 +107,18 @@ class TestIntegrationScoreContagion:
     """End-to-end: seed inputs -> score_contagion() -> verify DB output."""
 
     def test_acceptance_criteria_values(self, db_conn, db_url, config):
-        """AC: seed correlation=0.5, VIX=28, MOVE=120, verify score."""
+        """AC: seed correlation=0.5, VIXY=28, verify score."""
         _seed_correlation(db_conn, "CORR_CREDIT_TECH", 0.5)
         _seed_correlation(db_conn, "CORR_CREDIT_ENERGY", 0.3)
         _seed_correlation(db_conn, "CORR_TECH_ENERGY", 0.2)
-        _seed_market_data(db_conn, "VIX", 28.0)
-        _seed_market_data(db_conn, "MOVE", 120.0)
+        _seed_market_data(db_conn, "VIXY", 28.0)
 
         result = score_contagion(db_url, config)
 
         # max_corr = 0.5 -> (0.5-0.1)/(0.7-0.1)*100 = 66.67
-        # vix = 28 -> (28-15)/(40-15)*100 = 52.0
-        # move = 120 -> (120-80)/(160-80)*100 = 50.0
-        # comovement = (52.0+50.0)/2 = 51.0
-        # composite = 66.67*0.40 + 52.0*0.25 + 50.0*0.20 + 51.0*0.15
-        #           = 26.668 + 13.0 + 10.0 + 7.65 = 57.318
-        assert result == pytest.approx(57.32, abs=0.5)
+        # vix = 28 -> (28-15)/(50-15)*100 = 37.14
+        # composite = (66.67*0.60 + 37.14*0.40) / 1.0 = 40.0 + 14.86 = 54.86
+        assert result == pytest.approx(54.86, abs=0.5)
 
         row = _read_score(db_conn)
         assert row is not None
@@ -131,8 +130,7 @@ class TestIntegrationScoreContagion:
         _seed_correlation(db_conn, "CORR_CREDIT_TECH", 0.4)
         _seed_correlation(db_conn, "CORR_CREDIT_ENERGY", 0.2)
         _seed_correlation(db_conn, "CORR_TECH_ENERGY", 0.1)
-        _seed_market_data(db_conn, "VIX", 20.0)
-        _seed_market_data(db_conn, "MOVE", 100.0)
+        _seed_market_data(db_conn, "VIXY", 20.0)
 
         score_contagion(db_url, config)
 
@@ -153,8 +151,7 @@ class TestIntegrationScoreContagion:
         _seed_correlation(db_conn, "CORR_CREDIT_TECH", 0.9)
         _seed_correlation(db_conn, "CORR_CREDIT_ENERGY", 0.8)
         _seed_correlation(db_conn, "CORR_TECH_ENERGY", 0.7)
-        _seed_market_data(db_conn, "VIX", 50.0)
-        _seed_market_data(db_conn, "MOVE", 200.0)
+        _seed_market_data(db_conn, "VIXY", 50.0)
 
         result = score_contagion(db_url, config)
         assert result == pytest.approx(100.0, abs=0.1)
@@ -164,36 +161,29 @@ class TestIntegrationScoreContagion:
         _seed_correlation(db_conn, "CORR_CREDIT_TECH", 0.05)
         _seed_correlation(db_conn, "CORR_CREDIT_ENERGY", 0.02)
         _seed_correlation(db_conn, "CORR_TECH_ENERGY", 0.01)
-        _seed_market_data(db_conn, "VIX", 12.0)
-        _seed_market_data(db_conn, "MOVE", 70.0)
+        _seed_market_data(db_conn, "VIXY", 12.0)
 
         result = score_contagion(db_url, config)
         assert result == pytest.approx(0.0, abs=0.1)
 
     def test_missing_correlations_renormalizes(self, db_conn, db_url, config):
-        """When no CORR_ tickers exist, score is based on VIX/MOVE only."""
-        _seed_market_data(db_conn, "VIX", 27.5)
-        _seed_market_data(db_conn, "MOVE", 120.0)
+        """When no CORR_ tickers exist, score is based on VIX only."""
+        _seed_market_data(db_conn, "VIXY", 27.5)
 
         result = score_contagion(db_url, config)
-        # VIX=50, MOVE=50, comovement=50
-        # Weights: 0.25+0.20+0.15 = 0.60
-        # Score: 50*0.25 + 50*0.20 + 50*0.15 = 30 / 0.60 = 50
-        assert result == pytest.approx(50.0, abs=0.5)
+        # vix = 27.5 -> (27.5-15)/(50-15)*100 = 35.71
+        # Only vix_level present, renormalized: 35.71*0.40/0.40 = 35.71
+        assert result == pytest.approx(35.71, abs=0.5)
 
     def test_missing_vix_renormalizes(self, db_conn, db_url, config):
         """When VIX is missing, remaining components are renormalized."""
         _seed_correlation(db_conn, "CORR_CREDIT_TECH", 0.4)
         _seed_correlation(db_conn, "CORR_CREDIT_ENERGY", 0.2)
         _seed_correlation(db_conn, "CORR_TECH_ENERGY", 0.1)
-        _seed_market_data(db_conn, "MOVE", 120.0)
 
         result = score_contagion(db_url, config)
-        # max_corr = abs(0.4) = 0.4 -> score = 50
-        # move = 50
-        # comovement = can't compute (no VIX score) -> excluded
-        # Weights: 0.40 + 0.20 = 0.60
-        # Score: (50*0.40 + 50*0.20) / 0.60 = 30/0.60 = 50
+        # max_corr = abs(0.4) = 0.4 -> (0.4-0.1)/(0.7-0.1)*100 = 50
+        # Only max_correlation present, renormalized: 50*0.60/0.60 = 50
         assert result == pytest.approx(50.0, abs=0.5)
 
     def test_negative_correlation_uses_absolute(self, db_conn, db_url, config):
@@ -201,29 +191,27 @@ class TestIntegrationScoreContagion:
         _seed_correlation(db_conn, "CORR_CREDIT_TECH", -0.6)
         _seed_correlation(db_conn, "CORR_CREDIT_ENERGY", 0.1)
         _seed_correlation(db_conn, "CORR_TECH_ENERGY", 0.1)
-        _seed_market_data(db_conn, "VIX", 15.0)
-        _seed_market_data(db_conn, "MOVE", 80.0)
+        _seed_market_data(db_conn, "VIXY", 15.0)
 
         result = score_contagion(db_url, config)
         # max_corr = 0.6 -> (0.6-0.1)/(0.7-0.1)*100 = 83.33
-        # VIX=0, MOVE=0, comovement=0
-        # Score: 83.33*0.40 = 33.33 / 1.0 = 33.33
-        assert result == pytest.approx(33.33, abs=0.5)
+        # vix = 15 -> (15-15)/(50-15)*100 = 0
+        # composite = (83.33*0.60 + 0*0.40) / 1.0 = 50.0
+        assert result == pytest.approx(50.0, abs=0.5)
 
     def test_return_value_matches_written_value(self, db_conn, db_url, config):
         """The returned float matches the value stored in the database."""
         _seed_correlation(db_conn, "CORR_CREDIT_TECH", 0.5)
         _seed_correlation(db_conn, "CORR_CREDIT_ENERGY", 0.3)
         _seed_correlation(db_conn, "CORR_TECH_ENERGY", 0.2)
-        _seed_market_data(db_conn, "VIX", 25.0)
-        _seed_market_data(db_conn, "MOVE", 110.0)
+        _seed_market_data(db_conn, "VIXY", 25.0)
 
         returned = score_contagion(db_url, config)
         row = _read_score(db_conn)
         assert row is not None
         assert row[0] == pytest.approx(returned, abs=0.01)
 
-    def test_all_data_missing_returns_zero(self, db_conn, db_url, config):
-        """When no input data exists, score is 0."""
+    def test_all_data_missing_returns_none(self, db_conn, db_url, config):
+        """When no input data exists, score is None."""
         result = score_contagion(db_url, config)
-        assert result == pytest.approx(0.0)
+        assert result is None

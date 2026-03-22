@@ -64,10 +64,29 @@ describe("GET /api/risk/freshness", () => {
     expect(body.tickers.SPY).toBeDefined();
     expect(body.tickers.SPY.source).toBe("finnhub");
 
-    // Verify the SQL uses DISTINCT ON
+    // Verify the SQL uses DISTINCT ON with a time bound
     const sql = mockQuery.mock.calls[0][0] as string;
     expect(sql).toContain("DISTINCT ON");
     expect(sql).toContain("ORDER BY ticker, time DESC");
+    expect(sql).toContain("INTERVAL '90 days'");
+  });
+
+  it("returns status 'live' for a recently updated ticker", async () => {
+    const now = new Date();
+    const recentTime = new Date(now.getTime() - 5 * 60 * 1000);
+
+    mockQuery.mockResolvedValueOnce([
+      {
+        ticker: "SPY",
+        last_updated: recentTime.toISOString(),
+        source: "finnhub",
+      },
+    ]);
+
+    const response = await GET();
+    const body = await response.json();
+
+    expect(body.tickers.SPY.status).toBe("live");
   });
 
   it("returns empty tickers object when table is empty", async () => {

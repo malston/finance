@@ -71,16 +71,14 @@ scoring:
     weight: 0.25
     components:
       max_correlation:
-        sub_weight: 0.40
+        sub_weight: 0.60
         min_value: 0.1
         max_value: 0.7
       vix_level:
-        sub_weight: 0.35
+        sub_weight: 0.40
         ticker: VIXY
         min_value: 15
         max_value: 50
-      vix_move_comovement:
-        sub_weight: 0.25
 
   composite:
     domains:

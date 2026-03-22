@@ -71,10 +71,9 @@ def update_delivery_status(
     rule_id: str,
     channel_results: dict[str, bool],
 ) -> None:
-    """Update alert_history to record delivery status and successful channels.
+    """Update alert_history to record delivery status.
 
-    Sets delivered=true if at least one channel succeeded. Records the list
-    of channels that succeeded in the delivered_channels column.
+    Sets delivered=true if at least one channel succeeded.
 
     Args:
         conn: psycopg2 database connection.

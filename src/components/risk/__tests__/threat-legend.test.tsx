@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ThreatLegend } from "@/components/risk/threat-legend";
-import { C } from "@/lib/theme";
 
 describe("ThreatLegend", () => {
   it("renders the threat-legend container", () => {

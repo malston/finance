@@ -119,10 +119,10 @@ class TestComputeCompositeFromValues:
         result = compute_composite_from_values(scores, COMPOSITE_CONFIG)
         assert result == pytest.approx(75.0, abs=0.01)
 
-    def test_no_scores_returns_zero(self):
+    def test_no_scores_returns_none(self):
         scores = {}
         result = compute_composite_from_values(scores, COMPOSITE_CONFIG)
-        assert result == pytest.approx(0.0)
+        assert result is None
 
     def test_result_clamped_to_100(self):
         """Even if individual scores exceed 100, composite is clamped."""

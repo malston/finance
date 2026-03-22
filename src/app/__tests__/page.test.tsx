@@ -1,21 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createWrapper } from "@/test/query-test-utils";
 import DashboardPage from "@/app/page";
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
-
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
-  };
-}
 
 function mockAllFetches() {
   mockFetch.mockImplementation((url: string) => {

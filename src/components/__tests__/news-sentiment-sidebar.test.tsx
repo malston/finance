@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createWrapper } from "@/test/query-test-utils";
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -97,13 +98,13 @@ describe("NewsSentimentSidebar", () => {
 
   it("renders the News Sentiment header", async () => {
     mockFetchResponses();
-    render(<NewsSentimentSidebar />);
+    render(<NewsSentimentSidebar />, { wrapper: createWrapper() });
     expect(screen.getByText("News Sentiment")).toBeInTheDocument();
   });
 
   it("renders four domain tabs", async () => {
     mockFetchResponses();
-    render(<NewsSentimentSidebar />);
+    render(<NewsSentimentSidebar />, { wrapper: createWrapper() });
     expect(
       screen.getByRole("tab", { name: /Private Credit/i }),
     ).toBeInTheDocument();
@@ -120,7 +121,7 @@ describe("NewsSentimentSidebar", () => {
 
   it("displays headlines for the active domain tab", async () => {
     mockFetchResponses();
-    render(<NewsSentimentSidebar />);
+    render(<NewsSentimentSidebar />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(
@@ -135,7 +136,7 @@ describe("NewsSentimentSidebar", () => {
 
   it("displays sentiment pill with correct color coding for negative sentiment", async () => {
     mockFetchResponses();
-    render(<NewsSentimentSidebar />);
+    render(<NewsSentimentSidebar />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByText("-0.65")).toBeInTheDocument();
@@ -148,7 +149,7 @@ describe("NewsSentimentSidebar", () => {
 
   it("displays sentiment pill with correct color coding for positive sentiment", async () => {
     mockFetchResponses();
-    render(<NewsSentimentSidebar />);
+    render(<NewsSentimentSidebar />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByText("+0.42")).toBeInTheDocument();
@@ -161,7 +162,7 @@ describe("NewsSentimentSidebar", () => {
 
   it("displays source name for each headline", async () => {
     mockFetchResponses();
-    render(<NewsSentimentSidebar />);
+    render(<NewsSentimentSidebar />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByText("Reuters")).toBeInTheDocument();
@@ -171,7 +172,7 @@ describe("NewsSentimentSidebar", () => {
 
   it("displays domain sentiment aggregate badge", async () => {
     mockFetchResponses();
-    render(<NewsSentimentSidebar />);
+    render(<NewsSentimentSidebar />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByTestId("domain-sentiment-badge")).toBeInTheDocument();
@@ -184,7 +185,7 @@ describe("NewsSentimentSidebar", () => {
   it("switches domain tabs and shows different headlines", async () => {
     mockFetchResponses();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<NewsSentimentSidebar />);
+    render(<NewsSentimentSidebar />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByText(/Blue Owl Capital/)).toBeInTheDocument();
@@ -203,7 +204,7 @@ describe("NewsSentimentSidebar", () => {
   it("shows placeholder when no headlines exist for a domain", async () => {
     mockFetchResponses();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<NewsSentimentSidebar />);
+    render(<NewsSentimentSidebar />, { wrapper: createWrapper() });
 
     const geoTab = screen.getByRole("tab", { name: /Energy \/ Geo/i });
     await user.click(geoTab);
@@ -215,7 +216,7 @@ describe("NewsSentimentSidebar", () => {
 
   it("auto-refreshes every 60 seconds", async () => {
     mockFetchResponses();
-    render(<NewsSentimentSidebar />);
+    render(<NewsSentimentSidebar />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalled();
@@ -230,12 +231,25 @@ describe("NewsSentimentSidebar", () => {
     });
   });
 
-  it("shows refresh timestamp in the header", async () => {
-    mockFetchResponses();
-    render(<NewsSentimentSidebar />);
+  it("shows error indicator when fetch fails", async () => {
+    mockFetch.mockRejectedValue(new Error("Network error"));
+    render(<NewsSentimentSidebar />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByTestId("refresh-timestamp")).toBeInTheDocument();
+      expect(screen.getByTestId("news-error-indicator")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Unable to load headlines")).toBeInTheDocument();
+  });
+
+  it("shows error indicator when API returns non-ok response", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+    });
+    render(<NewsSentimentSidebar />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("news-error-indicator")).toBeInTheDocument();
     });
   });
 });

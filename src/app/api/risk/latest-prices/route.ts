@@ -18,9 +18,7 @@ const DISPLAY_TICKERS = [
   "HYG",
   "XLU",
   "EWT",
-  "VIX",
-  "MOVE",
-  "SKEW",
+  "VIXY",
 ];
 
 export async function GET(): Promise<Response> {

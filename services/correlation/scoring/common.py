@@ -1,12 +1,30 @@
 """Shared scoring utility functions.
 
 Provides linear_score, inverted_linear_score, composite score computation,
-and database fetch helpers used across multiple scoring modules.
+database fetch helpers, and config loading used across all scoring modules.
 """
 
+import logging
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import psycopg2
+import yaml
+
+logger = logging.getLogger(__name__)
+
+
+def load_scoring_config(config_path: str | None = None) -> dict[str, Any]:
+    """Load scoring configuration from YAML file.
+
+    If config_path is not provided, uses scoring_config.yaml in the parent
+    directory of this module (services/correlation/).
+    """
+    if config_path is None:
+        config_path = str(Path(__file__).parent.parent / "scoring_config.yaml")
+    with open(config_path) as f:
+        return yaml.safe_load(f)
 
 
 def linear_score(value: float, low: float, high: float) -> float:
@@ -31,11 +49,11 @@ def inverted_linear_score(value: float, min_val: float, max_val: float) -> float
 def compute_composite_score(
     sub_scores: dict[str, float],
     config: dict[str, Any],
-) -> float:
+) -> float | None:
     """Compute weighted average of sub-scores with renormalization for missing components.
 
     Components not present in sub_scores are excluded and remaining weights renormalized.
-    Returns the composite score clamped to 0-100.
+    Returns the composite score clamped to 0-100, or None if no components are available.
     """
     components = config["components"]
     weighted_sum = 0.0
@@ -48,10 +66,28 @@ def compute_composite_score(
             total_weight += weight
 
     if total_weight == 0:
-        return 0.0
+        return None
 
     score = weighted_sum / total_weight
     return round(max(0.0, min(100.0, score)), 2)
+
+
+def write_score(
+    conn: psycopg2.extensions.connection,
+    ticker: str,
+    score: float,
+) -> None:
+    """Write a computed score to time_series with the given ticker."""
+    now = datetime.now(timezone.utc)
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO time_series (time, ticker, value, source) "
+            "VALUES (%s, %s, %s, 'computed') "
+            "ON CONFLICT (time, ticker) DO UPDATE SET "
+            "value = EXCLUDED.value, source = EXCLUDED.source",
+            (now, ticker, score),
+        )
+    conn.commit()
 
 
 def fetch_latest_value(

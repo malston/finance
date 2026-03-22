@@ -17,6 +17,7 @@ export async function GET(): Promise<Response> {
     const rows = await query(
       `SELECT DISTINCT ON (ticker) ticker, time AS last_updated, source
        FROM time_series
+       WHERE time > NOW() - INTERVAL '90 days'
        ORDER BY ticker, time DESC`,
       [],
     );

@@ -49,9 +49,12 @@ describe("GET /api/risk/latest-prices", () => {
     const tickers = mockQueryLatestPrices.mock.calls[0][0];
     expect(tickers).toContain("NVDA");
     expect(tickers).toContain("OWL");
-    expect(tickers).toContain("VIX");
+    expect(tickers).toContain("VIXY");
     expect(tickers).toContain("SPY");
-    expect(tickers.length).toBe(18);
+    expect(tickers).not.toContain("VIX");
+    expect(tickers).not.toContain("MOVE");
+    expect(tickers).not.toContain("SKEW");
+    expect(tickers.length).toBe(16);
   });
 
   it("returns 500 on database error", async () => {

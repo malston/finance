@@ -68,11 +68,11 @@ def seed_prices(db_conn, clean_computed_rows):
         "CL=F": [75.0, 76.5, 74.0, 77.0, 78.0],
     }
 
+    all_tickers = list(prices.keys())
     with db_conn.cursor() as cur:
-        # Clean seed data first
-        all_tickers = list(prices.keys())
+        # Clean ALL data for constituent tickers (including stale production data)
         cur.execute(
-            "DELETE FROM time_series WHERE ticker = ANY(%s) AND source = 'test_seed'",
+            "DELETE FROM time_series WHERE ticker = ANY(%s)",
             (all_tickers,),
         )
         for ticker, vals in prices.items():
@@ -88,7 +88,8 @@ def seed_prices(db_conn, clean_computed_rows):
     # Cleanup seed data
     with db_conn.cursor() as cur:
         cur.execute(
-            "DELETE FROM time_series WHERE source = 'test_seed'",
+            "DELETE FROM time_series WHERE ticker = ANY(%s) AND source = 'test_seed'",
+            (all_tickers,),
         )
 
 

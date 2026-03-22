@@ -174,13 +174,13 @@ class TestCompositeScoreMath:
         # Only redemption: 50*0.15/0.15 = 50
         assert score == 50.0
 
-    def test_no_components_returns_zero(self):
+    def test_no_components_returns_none(self):
         from scoring.common import compute_composite_score
 
         config = DEFAULT_CONFIG["scoring"]["private_credit"]
         sub_scores = {}
         score = compute_composite_score(sub_scores, config)
-        assert score == 0.0
+        assert score is None
 
     def test_extreme_high_scores(self):
         from scoring.common import compute_composite_score

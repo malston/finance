@@ -13,7 +13,7 @@ import psycopg2
 import pytest
 
 from scoring.composite import score_composite, get_threat_level
-from scoring.contagion import load_scoring_config
+from scoring.common import load_scoring_config
 
 
 DOMAIN_TICKERS = [
@@ -176,10 +176,10 @@ class TestIntegrationScoreComposite:
         # (80*0.25 + 40*0.25) / 0.50 = 30/0.50 = 60
         assert result == pytest.approx(60.0, abs=0.5)
 
-    def test_all_data_missing_returns_zero(self, db_conn, db_url, config):
-        """When no domain scores exist, composite is 0."""
+    def test_all_data_missing_returns_none(self, db_conn, db_url, config):
+        """When no domain scores exist, composite is None."""
         result = score_composite(db_url, config)
-        assert result == pytest.approx(0.0)
+        assert result is None
 
     def test_return_value_matches_written_value(self, db_conn, db_url, config):
         """The returned float matches the value stored in the database."""

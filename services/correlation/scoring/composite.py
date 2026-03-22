@@ -7,12 +7,11 @@ and writes the result back as SCORE_COMPOSITE.
 """
 
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 import psycopg2
 
-from scoring.common import fetch_latest_value
+from scoring.common import fetch_latest_value, write_score
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ def get_threat_level(
 def compute_composite_from_values(
     scores: dict[str, float],
     config: dict[str, Any],
-) -> float:
+) -> float | None:
     """Compute weighted composite score from domain score values.
 
     Missing domains are excluded and remaining weights renormalized.
@@ -55,7 +54,8 @@ def compute_composite_from_values(
         config: Full scoring config dict (with top-level 'scoring' key).
 
     Returns:
-        The computed composite score (0-100), rounded to 2 decimal places.
+        The computed composite score (0-100), rounded to 2 decimal places,
+        or None if no domain scores are available.
     """
     domains = config.get("scoring", {}).get("composite", {}).get("domains", {})
     weighted_sum = 0.0
@@ -68,42 +68,27 @@ def compute_composite_from_values(
             total_weight += weight
 
     if total_weight == 0:
-        return 0.0
+        return None
 
     composite = weighted_sum / total_weight
     return round(max(0.0, min(100.0, composite)), 2)
 
 
-def _write_score(
-    conn: psycopg2.extensions.connection,
-    score: float,
-) -> None:
-    """Write the computed score to time_series as SCORE_COMPOSITE."""
-    now = datetime.now(timezone.utc)
-    with conn.cursor() as cur:
-        cur.execute(
-            "INSERT INTO time_series (time, ticker, value, source) "
-            "VALUES (%s, 'SCORE_COMPOSITE', %s, 'computed') "
-            "ON CONFLICT (time, ticker) DO UPDATE SET "
-            "value = EXCLUDED.value, source = EXCLUDED.source",
-            (now, score),
-        )
-    conn.commit()
-
-
-def score_composite(db_url: str, config: dict[str, Any]) -> float:
+def score_composite(db_url: str, config: dict[str, Any]) -> float | None:
     """Compute composite threat score and write it to TimescaleDB.
 
     Reads the latest value for each domain score ticker, computes the weighted
     average with renormalization for missing domains, writes the result as
     SCORE_COMPOSITE, and returns the score.
 
+    Returns None without writing to DB if no domain scores are available.
+
     Args:
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
 
     Returns:
-        The computed composite score (0-100).
+        The computed composite score (0-100), or None if no data is available.
     """
     domains = config.get("scoring", {}).get("composite", {}).get("domains", {})
     conn = psycopg2.connect(db_url)
@@ -117,7 +102,11 @@ def score_composite(db_url: str, config: dict[str, Any]) -> float:
 
         composite = compute_composite_from_values(scores, config)
 
-        _write_score(conn, composite)
+        if composite is None:
+            logger.warning("Composite: no domain scores available, skipping score write")
+            return None
+
+        write_score(conn, "SCORE_COMPOSITE", composite)
 
         level, color = get_threat_level(composite, config)
         logger.info(

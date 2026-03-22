@@ -8,6 +8,7 @@ import { EquityEtfCard } from "@/components/equity-etf-card";
 import { SectorPanels } from "@/components/risk/sector-panels";
 import { NewsSentimentSidebar } from "@/components/news-sentiment-sidebar";
 import { CorrelationChart } from "@/components/risk/correlation-chart";
+import { CompositeScore } from "@/components/risk/composite-score";
 import { ThreatLegend } from "@/components/risk/threat-legend";
 
 function HeaderClock() {
@@ -131,27 +132,8 @@ export default function DashboardPage() {
           }}
         >
           {/* Composite Threat */}
-          <div
-            data-testid="section-composite-threat"
-            style={{
-              background: C.panel,
-              border: `1px solid ${C.panelBorder}`,
-              borderRadius: 10,
-              padding: "20px 24px",
-              minHeight: 100,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 10,
-                color: C.textDim,
-                fontFamily: "var(--font-mono)",
-                letterSpacing: 2,
-                textTransform: "uppercase",
-              }}
-            >
-              Composite Systemic Risk
-            </div>
+          <div data-testid="section-composite-threat">
+            <CompositeScore />
           </div>
 
           {/* Correlation Chart */}

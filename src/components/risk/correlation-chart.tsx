@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import {
   AreaChart,
   Area,
@@ -11,10 +10,10 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useQuery } from "@tanstack/react-query";
 import { C } from "@/lib/theme";
 
 const CONTAGION_THRESHOLD = 0.5;
-const POLL_INTERVAL_MS = 60_000;
 const FETCH_URL = "/api/risk/correlations?days=79";
 
 interface CorrelationPoint {
@@ -35,12 +34,6 @@ interface CorrelationResponse {
   max_current: MaxCurrent;
 }
 
-type ChartState =
-  | { status: "loading" }
-  | { status: "loaded"; data: CorrelationResponse }
-  | { status: "empty" }
-  | { status: "error" };
-
 interface ChartDataPoint {
   time: string;
   value: number;
@@ -51,55 +44,51 @@ function formatTooltipValue(value: number): string {
 }
 
 export function CorrelationChart() {
-  const [state, setState] = useState<ChartState>({ status: "loading" });
-
-  const fetchData = useCallback(async () => {
-    try {
+  const { data, isLoading, isError } = useQuery<CorrelationResponse>({
+    queryKey: ["correlations"],
+    queryFn: async () => {
       const response = await fetch(FETCH_URL);
-      if (!response.ok) {
-        setState({ status: "error" });
-        return;
-      }
-      const data: CorrelationResponse = await response.json();
+      if (!response.ok) throw new Error("Failed to fetch correlations");
+      return response.json();
+    },
+    refetchInterval: 60_000,
+    staleTime: 55_000,
+  });
 
-      const maxPairKey = data.max_current.pair as keyof Omit<
-        CorrelationResponse,
-        "max_current"
-      >;
-      const series = data[maxPairKey];
-      if (!series || series.length === 0) {
-        setState({ status: "empty" });
-        return;
-      }
+  // Derive display state from query result
+  const isEmpty = data
+    ? (() => {
+        const pairKey = data.max_current.pair as keyof Omit<
+          CorrelationResponse,
+          "max_current"
+        >;
+        const series = data[pairKey];
+        return !series || series.length === 0;
+      })()
+    : false;
 
-      setState({ status: "loaded", data });
-    } catch {
-      setState({ status: "error" });
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const status = isLoading
+    ? "loading"
+    : isError
+      ? "error"
+      : isEmpty
+        ? "empty"
+        : "loaded";
 
   const rhoColor =
-    state.status === "loaded" && state.data.max_current.above_threshold
-      ? C.red
-      : C.yellow;
+    status === "loaded" && data!.max_current.above_threshold ? C.red : C.yellow;
 
   const rhoValue =
-    state.status === "loaded" ? state.data.max_current.value.toFixed(3) : "---";
+    status === "loaded" ? data!.max_current.value.toFixed(3) : "---";
 
   // Build chart data from the max correlation pair
   let chartData: ChartDataPoint[] = [];
-  if (state.status === "loaded") {
-    const pairKey = state.data.max_current.pair as keyof Omit<
+  if (status === "loaded" && data) {
+    const pairKey = data.max_current.pair as keyof Omit<
       CorrelationResponse,
       "max_current"
     >;
-    chartData = state.data[pairKey].map((pt) => ({
+    chartData = data[pairKey].map((pt) => ({
       time: pt.time,
       value: pt.value,
     }));
@@ -158,7 +147,7 @@ export function CorrelationChart() {
       </div>
 
       {/* Chart body */}
-      {state.status === "loading" && (
+      {status === "loading" && (
         <div
           data-testid="correlation-chart-loading"
           style={{
@@ -175,7 +164,7 @@ export function CorrelationChart() {
         </div>
       )}
 
-      {state.status === "error" && (
+      {status === "error" && (
         <div
           data-testid="correlation-chart-error"
           style={{
@@ -192,7 +181,7 @@ export function CorrelationChart() {
         </div>
       )}
 
-      {state.status === "empty" && (
+      {status === "empty" && (
         <div
           style={{
             height: 180,
@@ -208,7 +197,7 @@ export function CorrelationChart() {
         </div>
       )}
 
-      {state.status === "loaded" && (
+      {status === "loaded" && (
         <div data-testid="correlation-chart-container" style={{ marginTop: 8 }}>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={chartData}>

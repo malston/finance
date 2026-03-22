@@ -13,17 +13,17 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/malston/financial-risk-monitor/services/ingestion/fred"
 	"github.com/malston/financial-risk-monitor/services/ingestion/scheduler"
 	"github.com/malston/financial-risk-monitor/services/ingestion/store"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 func initSQLPath() string {
 	_, filename, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(filename), "..", "..", "db", "init.sql")
+	return filepath.Join(filepath.Dir(filename), "..", "..", "..", "db", "init.sql")
 }
 
 func startTimescaleDB(t *testing.T, ctx context.Context) *pgxpool.Pool {

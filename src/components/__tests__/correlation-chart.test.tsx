@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { createWrapper } from "@/test/query-test-utils";
 
 // Recharts ResponsiveContainer requires ResizeObserver, which jsdom lacks
 class ResizeObserverStub {
@@ -57,7 +58,7 @@ describe("CorrelationChart", () => {
       json: async () => SAMPLE_CORRELATION_DATA,
     });
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     expect(
       screen.getByText("Cross-Domain Correlation Monitor"),
@@ -70,7 +71,7 @@ describe("CorrelationChart", () => {
       json: async () => SAMPLE_CORRELATION_DATA,
     });
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     expect(
       screen.getByText(/BDC.*Big Tech 30-day rolling correlation/),
@@ -80,7 +81,7 @@ describe("CorrelationChart", () => {
   it("shows loading state initially", () => {
     mockFetch.mockReturnValue(new Promise(() => {}));
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     expect(screen.getByTestId("correlation-chart-loading")).toBeInTheDocument();
   });
@@ -91,7 +92,7 @@ describe("CorrelationChart", () => {
       json: async () => SAMPLE_CORRELATION_DATA,
     });
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByTestId("correlation-rho-value")).toHaveTextContent(
@@ -106,7 +107,7 @@ describe("CorrelationChart", () => {
       json: async () => SAMPLE_CORRELATION_DATA,
     });
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       const rhoElement = screen.getByTestId("correlation-rho-value");
@@ -123,7 +124,7 @@ describe("CorrelationChart", () => {
       json: async () => SAMPLE_BELOW_THRESHOLD,
     });
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       const rhoElement = screen.getByTestId("correlation-rho-value");
@@ -140,7 +141,7 @@ describe("CorrelationChart", () => {
       json: async () => SAMPLE_CORRELATION_DATA,
     });
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(
@@ -160,7 +161,7 @@ describe("CorrelationChart", () => {
       }),
     });
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByText("No correlation data")).toBeInTheDocument();
@@ -170,7 +171,7 @@ describe("CorrelationChart", () => {
   it("shows error state when fetch fails", async () => {
     mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByTestId("correlation-chart-error")).toBeInTheDocument();
@@ -183,7 +184,7 @@ describe("CorrelationChart", () => {
       json: async () => SAMPLE_CORRELATION_DATA,
     });
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -201,7 +202,7 @@ describe("CorrelationChart", () => {
       json: async () => SAMPLE_CORRELATION_DATA,
     });
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     // Wait for initial fetch
     await vi.waitFor(() => {
@@ -227,7 +228,7 @@ describe("CorrelationChart", () => {
       json: async () => SAMPLE_CORRELATION_DATA,
     });
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByTestId("correlation-rho-value")).toHaveTextContent(
@@ -246,7 +247,7 @@ describe("CorrelationChart", () => {
       json: async () => ({ error: "Internal server error" }),
     });
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByTestId("correlation-chart-error")).toBeInTheDocument();
@@ -259,7 +260,7 @@ describe("CorrelationChart", () => {
       json: async () => SAMPLE_CORRELATION_DATA,
     });
 
-    render(<CorrelationChart />);
+    render(<CorrelationChart />, { wrapper: createWrapper() });
 
     const panel = screen.getByTestId("correlation-chart-panel");
     expect(panel.style.background).toBe("rgb(17, 24, 39)");
