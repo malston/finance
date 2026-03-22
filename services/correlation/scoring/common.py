@@ -106,7 +106,7 @@ def fetch_latest_value(
     if max_age_hours is not None:
         query = (
             "SELECT value FROM time_series "
-            "WHERE ticker = %s AND time > NOW() - INTERVAL '%s hours' "
+            "WHERE ticker = %s AND time > NOW() - make_interval(hours => %s) "
             "ORDER BY time DESC LIMIT 1"
         )
         params = (ticker, max_age_hours)
