@@ -185,4 +185,72 @@ describe("GET /api/risk/correlations", () => {
 
     expect(response.headers.get("Content-Type")).toContain("application/json");
   });
+
+  describe("framework parameter", () => {
+    it("includes framework field in response defaulting to bookstaber", async () => {
+      mockQueryCorrelations.mockResolvedValueOnce([]);
+
+      const response = await GET(makeRequest());
+      const body = await response.json();
+
+      expect(body.framework).toBe("bookstaber");
+    });
+
+    it("includes framework=yardeni when requested", async () => {
+      mockQueryCorrelations.mockResolvedValueOnce([]);
+
+      const response = await GET(makeRequest({ framework: "yardeni" }));
+      const body = await response.json();
+
+      expect(body.framework).toBe("yardeni");
+    });
+
+    it("includes threshold field in response", async () => {
+      mockQueryCorrelations.mockResolvedValueOnce([]);
+
+      const response = await GET(makeRequest());
+      const body = await response.json();
+
+      expect(body.threshold).toBe(0.5);
+    });
+
+    it("uses threshold 0.85 when framework=yardeni", async () => {
+      mockQueryCorrelations.mockResolvedValueOnce([]);
+
+      const response = await GET(makeRequest({ framework: "yardeni" }));
+      const body = await response.json();
+
+      expect(body.threshold).toBe(0.85);
+    });
+
+    it("above_threshold uses 0.5 for bookstaber (value 0.58 is above)", async () => {
+      mockQueryCorrelations.mockResolvedValueOnce(SAMPLE_ROWS);
+
+      const response = await GET(makeRequest());
+      const body = await response.json();
+
+      // CORR_TECH_ENERGY latest abs(-0.58) = 0.58 >= 0.5
+      expect(body.max_current.above_threshold).toBe(true);
+    });
+
+    it("above_threshold uses 0.85 for yardeni (value 0.58 is below)", async () => {
+      mockQueryCorrelations.mockResolvedValueOnce(SAMPLE_ROWS);
+
+      const response = await GET(makeRequest({ framework: "yardeni" }));
+      const body = await response.json();
+
+      // CORR_TECH_ENERGY latest abs(-0.58) = 0.58 < 0.85
+      expect(body.max_current.above_threshold).toBe(false);
+    });
+
+    it("defaults to bookstaber for invalid framework value", async () => {
+      mockQueryCorrelations.mockResolvedValueOnce([]);
+
+      const response = await GET(makeRequest({ framework: "invalid" }));
+      const body = await response.json();
+
+      expect(body.framework).toBe("bookstaber");
+      expect(body.threshold).toBe(0.5);
+    });
+  });
 });

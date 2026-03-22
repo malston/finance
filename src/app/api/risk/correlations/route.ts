@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { queryCorrelations } from "@/lib/timescaledb";
-
-const CONTAGION_THRESHOLD = 0.5;
+import { FRAMEWORK_CONFIG, parseFramework } from "@/lib/framework-config";
 
 interface CorrelationPoint {
   time: string;
@@ -19,11 +18,13 @@ interface CorrelationResponse {
   credit_energy: CorrelationPoint[];
   tech_energy: CorrelationPoint[];
   max_current: MaxCurrent;
+  framework: string;
+  threshold: number;
 }
 
 const TICKER_TO_KEY: Record<
   string,
-  keyof Omit<CorrelationResponse, "max_current">
+  keyof Omit<CorrelationResponse, "max_current" | "framework" | "threshold">
 > = {
   CORR_CREDIT_TECH: "credit_tech",
   CORR_CREDIT_ENERGY: "credit_energy",
@@ -33,6 +34,9 @@ const TICKER_TO_KEY: Record<
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const daysParam = url.searchParams.get("days");
+  const framework = parseFramework(url.searchParams.get("framework"));
+  const config = FRAMEWORK_CONFIG[framework];
+
   let days = 79;
   if (daysParam !== null) {
     const parsedDays = Number.parseInt(daysParam, 10);
@@ -49,6 +53,8 @@ export async function GET(request: Request): Promise<Response> {
       credit_energy: [],
       tech_energy: [],
       max_current: { pair: "credit_tech", value: 0, above_threshold: false },
+      framework,
+      threshold: config.contagionThreshold,
     };
 
     for (const row of rows) {
@@ -79,7 +85,7 @@ export async function GET(request: Request): Promise<Response> {
     grouped.max_current = {
       pair: maxPair,
       value: maxValue,
-      above_threshold: maxAbsValue >= CONTAGION_THRESHOLD,
+      above_threshold: maxAbsValue >= config.contagionThreshold,
     };
 
     return NextResponse.json(grouped);

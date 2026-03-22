@@ -92,4 +92,100 @@ describe("GET /api/risk/news", () => {
     expect(response.status).toBe(200);
     expect(body).toEqual([]);
   });
+
+  describe("framework parameter", () => {
+    const MIXED_SENTIMENT_NEWS = [
+      {
+        time: "2026-03-20T15:00:00Z",
+        domain: "private_credit",
+        headline: "BDC defaults spike",
+        sentiment: -0.45,
+        source_name: "reuters.com",
+        source_url: "https://reuters.com/article/bdc",
+      },
+      {
+        time: "2026-03-20T14:30:00Z",
+        domain: "private_credit",
+        headline: "Private lending resilient",
+        sentiment: 0.6,
+        source_name: "bloomberg.com",
+        source_url: "https://bloomberg.com/news/lending",
+      },
+      {
+        time: "2026-03-20T14:00:00Z",
+        domain: "private_credit",
+        headline: "CLO markets stable",
+        sentiment: 0.1,
+        source_name: "ft.com",
+        source_url: "https://ft.com/clo",
+      },
+    ];
+
+    it("sorts news by sentiment ascending (most negative first) for bookstaber", async () => {
+      mockQueryNewsSentiment.mockResolvedValueOnce([...MIXED_SENTIMENT_NEWS]);
+
+      const request = new Request(
+        "http://localhost/api/risk/news?domain=private_credit&framework=bookstaber",
+      );
+      const response = await GET(request);
+      const body = await response.json();
+
+      expect(body[0].sentiment).toBe(-0.45);
+      expect(body[1].sentiment).toBe(0.1);
+      expect(body[2].sentiment).toBe(0.6);
+    });
+
+    it("sorts news by sentiment descending (most positive first) for yardeni", async () => {
+      mockQueryNewsSentiment.mockResolvedValueOnce([...MIXED_SENTIMENT_NEWS]);
+
+      const request = new Request(
+        "http://localhost/api/risk/news?domain=private_credit&framework=yardeni",
+      );
+      const response = await GET(request);
+      const body = await response.json();
+
+      expect(body[0].sentiment).toBe(0.6);
+      expect(body[1].sentiment).toBe(0.1);
+      expect(body[2].sentiment).toBe(-0.45);
+    });
+
+    it("defaults to bookstaber sort (ascending) when no framework specified", async () => {
+      mockQueryNewsSentiment.mockResolvedValueOnce([...MIXED_SENTIMENT_NEWS]);
+
+      const request = new Request(
+        "http://localhost/api/risk/news?domain=private_credit",
+      );
+      const response = await GET(request);
+      const body = await response.json();
+
+      expect(body[0].sentiment).toBe(-0.45);
+      expect(body[2].sentiment).toBe(0.6);
+    });
+
+    it("defaults to bookstaber for invalid framework value", async () => {
+      mockQueryNewsSentiment.mockResolvedValueOnce([...MIXED_SENTIMENT_NEWS]);
+
+      const request = new Request(
+        "http://localhost/api/risk/news?domain=private_credit&framework=invalid",
+      );
+      const response = await GET(request);
+      const body = await response.json();
+
+      // Ascending sort (bookstaber default)
+      expect(body[0].sentiment).toBe(-0.45);
+      expect(body[2].sentiment).toBe(0.6);
+    });
+
+    it("returns empty array regardless of framework when no news", async () => {
+      mockQueryNewsSentiment.mockResolvedValueOnce([]);
+
+      const request = new Request(
+        "http://localhost/api/risk/news?domain=private_credit&framework=yardeni",
+      );
+      const response = await GET(request);
+      const body = await response.json();
+
+      expect(body).toEqual([]);
+    });
+  });
 });

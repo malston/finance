@@ -57,4 +57,46 @@ describe("getThreatLevel", () => {
     const result = getThreatLevel(75.5);
     expect(result.level).toBe("CRITICAL");
   });
+
+  describe("with framework parameter", () => {
+    it("defaults to bookstaber bands when no framework specified", () => {
+      expect(getThreatLevel(25).level).toBe("LOW");
+      expect(getThreatLevel(26).level).toBe("ELEVATED");
+    });
+
+    it("uses bookstaber bands when framework is bookstaber", () => {
+      expect(getThreatLevel(25, "bookstaber").level).toBe("LOW");
+      expect(getThreatLevel(26, "bookstaber").level).toBe("ELEVATED");
+      expect(getThreatLevel(50, "bookstaber").level).toBe("ELEVATED");
+      expect(getThreatLevel(51, "bookstaber").level).toBe("HIGH");
+      expect(getThreatLevel(75, "bookstaber").level).toBe("HIGH");
+      expect(getThreatLevel(76, "bookstaber").level).toBe("CRITICAL");
+    });
+
+    it("uses yardeni bands when framework is yardeni", () => {
+      expect(getThreatLevel(30, "yardeni").level).toBe("LOW");
+      expect(getThreatLevel(31, "yardeni").level).toBe("ELEVATED");
+      expect(getThreatLevel(55, "yardeni").level).toBe("ELEVATED");
+      expect(getThreatLevel(56, "yardeni").level).toBe("HIGH");
+      expect(getThreatLevel(80, "yardeni").level).toBe("HIGH");
+      expect(getThreatLevel(81, "yardeni").level).toBe("CRITICAL");
+    });
+
+    it("score 30 is ELEVATED under bookstaber but LOW under yardeni", () => {
+      expect(getThreatLevel(30, "bookstaber").level).toBe("ELEVATED");
+      expect(getThreatLevel(30, "yardeni").level).toBe("LOW");
+    });
+
+    it("score 76 is CRITICAL under bookstaber but HIGH under yardeni", () => {
+      expect(getThreatLevel(76, "bookstaber").level).toBe("CRITICAL");
+      expect(getThreatLevel(76, "yardeni").level).toBe("HIGH");
+    });
+
+    it("returns correct colors for yardeni bands", () => {
+      expect(getThreatLevel(30, "yardeni").color).toBe("#22c55e");
+      expect(getThreatLevel(31, "yardeni").color).toBe("#eab308");
+      expect(getThreatLevel(56, "yardeni").color).toBe("#f97316");
+      expect(getThreatLevel(81, "yardeni").color).toBe("#ef4444");
+    });
+  });
 });
