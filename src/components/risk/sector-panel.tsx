@@ -75,7 +75,7 @@ export function SectorPanel({
   });
 
   const domainScore = scores?.domains[domain.scoreKey];
-  const score = domainScore?.score ?? 0;
+  const score = domainScore?.score ?? null;
   const scoreColor = domainScore?.color ?? domain.color;
 
   const { data: tickerData } = useQuery<Record<string, TimeSeriesRow[]>>({
