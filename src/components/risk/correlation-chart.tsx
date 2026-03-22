@@ -238,12 +238,22 @@ export function CorrelationChart() {
                 y={contagionThreshold}
                 stroke={C.red}
                 strokeDasharray="4 4"
-                label={{
-                  value: thresholdLabel,
-                  position: "right",
-                  fill: C.red,
-                  fontSize: 8,
-                }}
+                label={({
+                  viewBox,
+                }: {
+                  viewBox: { x?: number; y?: number; width?: number };
+                }) => (
+                  <text
+                    data-testid="contagion-threshold-label"
+                    x={(viewBox.x ?? 0) + (viewBox.width ?? 0) + 4}
+                    y={(viewBox.y ?? 0) - 4}
+                    fill={C.red}
+                    fontSize={8}
+                    textAnchor="end"
+                  >
+                    {thresholdLabel}
+                  </text>
+                )}
               />
               <ReferenceLine
                 y={0}
