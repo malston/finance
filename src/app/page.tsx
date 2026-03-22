@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { C } from "@/lib/theme";
+import { FrameworkProvider, useFramework } from "@/lib/framework-context";
+import { FrameworkToggle } from "@/components/risk/framework-toggle";
 import { HYCreditSpreadCard } from "@/components/hy-credit-card";
 import { TreasuryCreditCard } from "@/components/treasury-credit-card";
 import { EquityEtfCard } from "@/components/equity-etf-card";
@@ -10,6 +12,19 @@ import { NewsSentimentSidebar } from "@/components/news-sentiment-sidebar";
 import { CorrelationChart } from "@/components/risk/correlation-chart";
 import { CompositeScore } from "@/components/risk/composite-score";
 import { ThreatLegend } from "@/components/risk/threat-legend";
+
+const HEADER_TEXT = {
+  bookstaber: {
+    title: "BOOKSTABER RISK MONITOR",
+    subtitle:
+      "Systemic contagion tracker \u2014 Private Credit \u00d7 AI \u00d7 Energy \u00d7 Geopolitical",
+  },
+  yardeni: {
+    title: "YARDENI RESILIENCE MONITOR",
+    subtitle:
+      "Resilience monitor \u2014 tracking self-correction across risk domains",
+  },
+} as const;
 
 function HeaderClock() {
   const [time, setTime] = useState(new Date());
@@ -51,7 +66,10 @@ function HeaderClock() {
   );
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
+  const { framework } = useFramework();
+  const header = HEADER_TEXT[framework];
+
   return (
     <div
       data-testid="dashboard-root"
@@ -83,7 +101,7 @@ export default function DashboardPage() {
               gap: 10,
             }}
           >
-            <span style={{ fontSize: 22 }}>◈</span>
+            <span style={{ fontSize: 22 }}>{"\u25C8"}</span>
             <span
               style={{
                 fontSize: 18,
@@ -91,7 +109,7 @@ export default function DashboardPage() {
                 letterSpacing: "-0.02em",
               }}
             >
-              BOOKSTABER RISK MONITOR
+              {header.title}
             </span>
           </div>
           <div
@@ -102,10 +120,10 @@ export default function DashboardPage() {
               fontFamily: "var(--font-mono)",
             }}
           >
-            Systemic contagion tracker — Private Credit × AI × Energy ×
-            Geopolitical
+            {header.subtitle}
           </div>
         </div>
+        <FrameworkToggle />
         <HeaderClock />
       </div>
 
@@ -163,5 +181,13 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <FrameworkProvider>
+      <DashboardContent />
+    </FrameworkProvider>
   );
 }

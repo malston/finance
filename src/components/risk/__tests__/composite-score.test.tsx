@@ -105,7 +105,7 @@ afterEach(() => {
 });
 
 describe("CompositeScore", () => {
-  it("fetches from /api/risk/scores", async () => {
+  it("fetches from /api/risk/scores with framework param", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => SCORES_RESPONSE,
@@ -114,7 +114,9 @@ describe("CompositeScore", () => {
     render(<CompositeScore />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith("/api/risk/scores");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/risk/scores?framework=bookstaber",
+      );
     });
   });
 

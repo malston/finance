@@ -1,13 +1,25 @@
-import { C } from "@/lib/theme";
+"use client";
 
-const LEVELS = [
-  { color: C.green, label: "LOW (0-25)" },
-  { color: C.yellow, label: "ELEVATED (26-50)" },
-  { color: C.orange, label: "HIGH (51-75)" },
-  { color: C.red, label: "CRITICAL (76-100)" },
-];
+import { C } from "@/lib/theme";
+import { useFramework } from "@/lib/framework-context";
+import { FRAMEWORK_CONFIG } from "@/lib/framework-config";
+
+function bandLabel(level: string, min: number, max: number): string {
+  return `${level} (${min}-${max})`;
+}
 
 export function ThreatLegend() {
+  const { framework } = useFramework();
+  const threatLevels = FRAMEWORK_CONFIG[framework].threatLevels;
+
+  const levels = threatLevels.map((band, i) => {
+    const min = i === 0 ? 0 : threatLevels[i - 1].max + 1;
+    return {
+      color: band.color,
+      label: bandLabel(band.level, min, band.max),
+    };
+  });
+
   return (
     <div
       data-testid="threat-legend"
@@ -19,7 +31,7 @@ export function ThreatLegend() {
         flexWrap: "wrap",
       }}
     >
-      {LEVELS.map((l) => (
+      {levels.map((l) => (
         <div
           key={l.label}
           data-testid="legend-item"
