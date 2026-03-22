@@ -103,6 +103,9 @@ def fetch_latest_value(
         max_age_hours: If provided, only consider rows newer than this many
             hours ago. Returns None when all data is older than the cutoff.
     """
+    if max_age_hours is not None and max_age_hours <= 0:
+        raise ValueError(f"max_age_hours must be positive, got {max_age_hours}")
+
     if max_age_hours is not None:
         query = (
             "SELECT value FROM time_series "
@@ -121,4 +124,22 @@ def fetch_latest_value(
     with conn.cursor() as cur:
         cur.execute(query, params)
         row = cur.fetchone()
-    return row[0] if row else None
+
+    if row:
+        return row[0]
+
+    if max_age_hours is not None:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM time_series WHERE ticker = %s LIMIT 1",
+                (ticker,),
+            )
+            exists = cur.fetchone()
+        if exists:
+            logger.warning(
+                "Stale data for %s: exists in DB but older than %s hours",
+                ticker, max_age_hours,
+            )
+        else:
+            logger.debug("No data found for %s", ticker)
+    return None
