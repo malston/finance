@@ -53,7 +53,8 @@ def compute_composite_score(
     """Compute weighted average of sub-scores with renormalization for missing components.
 
     Components not present in sub_scores are excluded and remaining weights renormalized.
-    Returns the composite score clamped to 0-100, or None if no components are available.
+    Returns the composite score clamped to 0-100, or None if no components are available
+    or if fewer than config["min_components"] sub-scores are present (when configured).
     """
     components = config["components"]
     weighted_sum = 0.0
