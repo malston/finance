@@ -400,6 +400,19 @@ describe("CompositeScore", () => {
     );
   });
 
+  it("has data-testid 'composite-score' on root element when loaded", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => SCORES_RESPONSE,
+    });
+
+    render(<CompositeScore />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("composite-score")).toBeInTheDocument();
+    });
+  });
+
   it("applies domain-specific colors to badges", async () => {
     mockFetch.mockResolvedValue({
       ok: true,

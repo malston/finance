@@ -132,6 +132,7 @@ export function CompositeScore() {
 
   return (
     <div
+      data-testid="composite-score"
       style={{
         background: `linear-gradient(135deg, ${C.panel} 0%, ${color}10 100%)`,
         border: `1px solid ${color}40`,
