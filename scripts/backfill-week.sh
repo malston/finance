@@ -1,23 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Backfill last week's market data from Yahoo Finance and FRED into TimescaleDB.
+# Backfill historical market data from Yahoo Finance and FRED into TimescaleDB.
 # The correlation service will compute indices, correlations, and scores
 # on its next 5-minute cycle once sufficient data exists.
 #
 # Usage: FRED_API_KEY=... ./scripts/backfill-week.sh [days]
-#   days: number of trading days to fetch (default: 35, enough for 30-day correlations)
+#   days: number of calendar days to fetch (default: 50, yields ~35 trading days
+#         which exceeds the 30-day correlation window)
 
 : "${FRED_API_KEY:?FRED_API_KEY is required}"
 
-DAYS="${1:-35}"
+DAYS="${1:-50}"
 DB_CONTAINER="${DB_CONTAINER:-financial-risk-monitor-timescaledb-1}"
 
 db_exec() {
   docker exec -i "$DB_CONTAINER" psql -U risk -d riskmonitor -c "$1"
 }
 
-echo "=== Yahoo Finance equity data (${DAYS} days) ==="
+echo "=== Yahoo Finance equity data (${DAYS} calendar days) ==="
 
 TICKERS=(
   OWL ARCC BXSL OBDC HYG
@@ -36,8 +37,8 @@ import sys, json
 d = json.load(sys.stdin)
 result = d.get('chart', {}).get('result')
 if not result:
-    print('-- no data', file=sys.stderr)
-    sys.exit(0)
+    print('-- no data for ' + sys.argv[1], file=sys.stderr)
+    sys.exit(1)
 r = result[0]
 timestamps = r.get('timestamp', [])
 closes = r['indicators']['quote'][0].get('close', [])
@@ -52,7 +53,7 @@ if values:
 ''' + ','.join(values) + '''
 ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source;'''
     print(sql)
-" "$ticker" | docker exec -i "$DB_CONTAINER" psql -U risk -d riskmonitor -q 2>/dev/null
+" "$ticker" | docker exec -i "$DB_CONTAINER" psql -U risk -d riskmonitor -q
 
   count=$(echo "$resp" | python3 -c "
 import sys, json
@@ -63,7 +64,7 @@ if r:
     print(len([c for c in closes if c is not None]))
 else:
     print(0)
-" 2>/dev/null)
+")
   echo "OK ($count rows)"
   sleep 0.5
 done
@@ -82,6 +83,9 @@ for series in "${FRED_SERIES[@]}"; do
   echo "$resp" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
+if 'error_message' in d:
+    print('FRED API error: ' + d['error_message'], file=sys.stderr)
+    sys.exit(1)
 obs = d.get('observations', [])
 ticker = sys.argv[1]
 values = []
@@ -100,7 +104,7 @@ else:
     print('-- no data')
 " "$series" | docker exec -i "$DB_CONTAINER" psql -U risk -d riskmonitor -q
 
-  count=$(echo "$resp" | python3 -c "import sys,json; print(len([o for o in json.load(sys.stdin).get('observations',[]) if o['value'] != '.']))" 2>/dev/null || echo "0")
+  count=$(echo "$resp" | python3 -c "import sys,json; print(len([o for o in json.load(sys.stdin).get('observations',[]) if o['value'] != '.']))")
   echo "OK ($count rows)"
   sleep 0.5
 done

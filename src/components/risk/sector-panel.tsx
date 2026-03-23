@@ -81,6 +81,7 @@ export function SectorPanel({
   const domainScore = scores?.domains[domain.scoreKey];
   const score = domainScore?.score ?? null;
   const scoreColor = domainScore?.color ?? domain.color;
+  const domainUpdatedAt = domainScore?.updated_at ?? null;
 
   const { data: tickerData } = useQuery<Record<string, TimeSeriesRow[]>>({
     queryKey: ["sector-timeseries", domain.scoreKey],
@@ -166,7 +167,7 @@ export function SectorPanel({
             >
               {annotateText(domain.description)}
             </div>
-            {domainScore?.updated_at && isScoreAged(domainScore.updated_at) && (
+            {domainUpdatedAt && isScoreAged(domainUpdatedAt) && (
               <div
                 data-testid="sector-panel-score-age"
                 style={{
@@ -176,7 +177,7 @@ export function SectorPanel({
                   marginTop: 1,
                 }}
               >
-                {formatScoreTimestamp(domainScore.updated_at!)}
+                {formatScoreTimestamp(domainUpdatedAt)}
               </div>
             )}
           </div>

@@ -336,6 +336,45 @@ describe("SectorPanel", () => {
     expect(screen.queryByTestId("sector-panel-score-age")).toBeNull();
   });
 
+  it("hides 'as of' timestamp when domain has score but null updated_at", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/api/risk/scores")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ...MOCK_SCORES,
+            domains: {
+              ...MOCK_SCORES.domains,
+              private_credit: {
+                ...MOCK_SCORES.domains.private_credit,
+                score: 68,
+                updated_at: null,
+              },
+            },
+          }),
+        });
+      }
+      if (url.includes("/api/risk/timeseries")) {
+        const params = new URL(url, "http://localhost").searchParams;
+        const ticker = params.get("ticker") || "UNKNOWN";
+        return Promise.resolve({
+          ok: true,
+          json: async () => makeTimeseries(ticker),
+        });
+      }
+      return Promise.resolve({ ok: false, json: async () => ({}) });
+    });
+
+    render(<SectorPanel domain={CREDIT_DOMAIN} defaultExpanded={false} />, {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("threat-gauge")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("sector-panel-score-age")).toBeNull();
+  });
+
   it("fetches domain score from /api/risk/scores", async () => {
     mockAllFetches();
     render(<SectorPanel domain={CREDIT_DOMAIN} defaultExpanded={false} />, {

@@ -74,6 +74,14 @@ describe("isScoreAged", () => {
     // 15 min ago IS aged with 10-min threshold
     expect(isScoreAged(fifteenMinAgo, 10 * 60 * 1000)).toBe(true);
   });
+
+  it("returns false for empty string", () => {
+    expect(isScoreAged("")).toBe(false);
+  });
+
+  it("returns false for malformed date string", () => {
+    expect(isScoreAged("not-a-date")).toBe(false);
+  });
 });
 
 describe("formatScoreTimestamp", () => {
@@ -109,5 +117,13 @@ describe("formatScoreTimestamp", () => {
     // 2026-01-15T18:30:00Z = 1:30 PM ET (EST, UTC-5 in January)
     const result = formatScoreTimestamp("2026-01-15T18:30:00Z");
     expect(result).toContain("PM");
+  });
+
+  it("returns null for malformed date string", () => {
+    expect(formatScoreTimestamp("not-a-date")).toBeNull();
+  });
+
+  it("returns null for empty string", () => {
+    expect(formatScoreTimestamp("")).toBeNull();
   });
 });
