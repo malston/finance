@@ -1,3 +1,13 @@
+# Staleness policy: controls how old market data can be before scorers reject it.
+# During market hours, use a tight window to catch real outages.
+# During off-hours (evenings, weekends), relax so Friday's data produces scores.
+staleness:
+  market_hours_max_age: 2 # hours — tight window during trading
+  off_hours_max_age: 48 # hours — covers a standard weekend (increase to 72 for 3-day weekends)
+  market_open: "09:30" # US Eastern Time
+  market_close: "16:00" # US Eastern Time
+  market_days: [0, 1, 2, 3, 4] # Python datetime.weekday(): Monday=0 through Friday=4
+
 scoring:
   private_credit:
     weight: 0.30
