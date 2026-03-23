@@ -607,11 +607,11 @@ class TestRunScoringPassIsolation:
         """When one scorer raises, the remaining scorers still execute."""
         call_log = []
 
-        def scorer_ok(db_url, config, ticker_prefix=""):
+        def scorer_ok(db_url, config, ticker_prefix="", **kwargs):
             call_log.append("ok")
             return 50.0
 
-        def scorer_fail(db_url, config, ticker_prefix=""):
+        def scorer_fail(db_url, config, ticker_prefix="", **kwargs):
             call_log.append("fail")
             raise RuntimeError("simulated failure")
 
@@ -628,7 +628,7 @@ class TestRunScoringPassIsolation:
 
     def test_all_scorers_failing_does_not_raise(self):
         """If every scorer raises, _run_scoring_pass completes without raising."""
-        def scorer_fail(db_url, config, ticker_prefix=""):
+        def scorer_fail(db_url, config, ticker_prefix="", **kwargs):
             raise RuntimeError("boom")
 
         with patch("run._SCORERS", [
@@ -641,7 +641,7 @@ class TestRunScoringPassIsolation:
         """The ticker_prefix argument is forwarded to each scorer."""
         received_prefixes = []
 
-        def scorer_capture(db_url, config, ticker_prefix=""):
+        def scorer_capture(db_url, config, ticker_prefix="", **kwargs):
             received_prefixes.append(ticker_prefix)
             return 42.0
 
