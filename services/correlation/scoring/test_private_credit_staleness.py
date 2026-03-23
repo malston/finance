@@ -5,7 +5,7 @@ Tests cover:
 - staleness_hours is forwarded to fetch_latest_with_time
 - data_time is min of source timestamps when both present
 - data_time uses single timestamp when only one fetch returns data
-- data_time is None when no source data (write_score not called)
+- data_time is None when no source data (both fetches return None; write_score called with data_time=None)
 - Existing callers without staleness_hours still work
 """
 

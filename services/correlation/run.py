@@ -8,6 +8,7 @@ import os
 import signal
 import sys
 import threading
+from datetime import datetime, timezone
 from typing import Any, Callable
 
 import psycopg2
@@ -109,8 +110,9 @@ def main() -> None:
         except Exception:
             logger.exception("Correlation computation failed")
 
-        staleness_hours = get_staleness_hours(scoring_config)
-        market_open = is_market_hours(scoring_config)
+        now = datetime.now(timezone.utc)
+        staleness_hours = get_staleness_hours(scoring_config, now=now)
+        market_open = is_market_hours(scoring_config, now=now)
         logger.info(
             "Staleness policy: %sh (%s)",
             staleness_hours,
@@ -120,7 +122,8 @@ def main() -> None:
         _run_scoring_pass(db_url, scoring_config, "Bookstaber", staleness_hours=staleness_hours)
 
         if yardeni_config is not None:
-            _run_scoring_pass(db_url, yardeni_config, "Yardeni", ticker_prefix="YARDENI_", staleness_hours=staleness_hours)
+            yardeni_staleness_hours = get_staleness_hours(yardeni_config, now=now)
+            _run_scoring_pass(db_url, yardeni_config, "Yardeni", ticker_prefix="YARDENI_", staleness_hours=yardeni_staleness_hours)
 
         if not market_open:
             logger.info("Off-hours: skipping alert evaluation")

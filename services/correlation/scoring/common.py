@@ -30,17 +30,21 @@ def load_scoring_config(config_path: str | None = None) -> dict[str, Any]:
         return yaml.safe_load(f)
 
 
-def is_market_hours(config: dict[str, Any]) -> bool:
+def is_market_hours(config: dict[str, Any], now: datetime | None = None) -> bool:
     """Return True if current time is within US market trading hours.
 
     Uses the staleness block from config. If missing, returns True (backward compat).
     Market window is [market_open, market_close) -- inclusive open, exclusive close.
+
+    Args:
+        config: Scoring config dict with optional top-level 'staleness' block.
+        now: Timestamp to evaluate. Defaults to current time if not provided.
     """
     staleness = config.get("staleness")
     if staleness is None:
         return True
 
-    now_et = datetime.now(_ET)
+    now_et = (now or datetime.now(_ET)).astimezone(_ET)
     market_days = staleness.get("market_days", [0, 1, 2, 3, 4])
     if now_et.weekday() not in market_days:
         return False
@@ -55,18 +59,22 @@ def is_market_hours(config: dict[str, Any]) -> bool:
     return market_open <= now_et.time() < market_close
 
 
-def get_staleness_hours(config: dict[str, Any]) -> float:
+def get_staleness_hours(config: dict[str, Any], now: datetime | None = None) -> float:
     """Return the appropriate max_age_hours based on current market schedule.
 
     During market hours, returns the tight window (default 2h).
     During off-hours, returns the relaxed window (default 2h if not configured).
     If config has no staleness block, returns 2.0 for backward compatibility.
+
+    Args:
+        config: Scoring config dict with optional top-level 'staleness' block.
+        now: Timestamp to evaluate. Defaults to current time if not provided.
     """
     staleness = config.get("staleness")
     if staleness is None:
         return 2.0
 
-    if is_market_hours(config):
+    if is_market_hours(config, now=now):
         return float(staleness.get("market_hours_max_age", 2))
     return float(staleness.get("off_hours_max_age", 2))
 
