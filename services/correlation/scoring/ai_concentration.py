@@ -6,13 +6,14 @@ and writes the result back as SCORE_AI_CONCENTRATION.
 """
 
 import logging
+from datetime import datetime
 from typing import Any
 
 import psycopg2
 
 from scoring.common import (
     compute_composite_score,
-    fetch_latest_value,
+    fetch_latest_with_time,
     linear_score,
     write_score,
 )
@@ -73,7 +74,12 @@ def score_ai_concentration_from_values(
     return compute_composite_score(sub_scores, ac_config)
 
 
-def score_ai_concentration(db_url: str, config: dict[str, Any], ticker_prefix: str = "") -> float | None:
+def score_ai_concentration(
+    db_url: str,
+    config: dict[str, Any],
+    ticker_prefix: str = "",
+    staleness_hours: float = 2,
+) -> float | None:
     """Compute AI Concentration score and write it to TimescaleDB.
 
     Reads SPY_RSP_RATIO, SMH, and SPY from the time_series table, computes 3
@@ -86,6 +92,7 @@ def score_ai_concentration(db_url: str, config: dict[str, Any], ticker_prefix: s
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
         ticker_prefix: Prepended to the output ticker name (default: "").
+        staleness_hours: Maximum age in hours for source data (default: 2).
 
     Returns:
         The computed score (0-100), or None if no data is available.
@@ -95,16 +102,33 @@ def score_ai_concentration(db_url: str, config: dict[str, Any], ticker_prefix: s
 
     conn = psycopg2.connect(db_url)
     try:
+        timestamps: list[datetime] = []
+
         spy_rsp_ticker = components.get("spy_rsp_deviation", {}).get(
             "ticker", "SPY_RSP_RATIO",
         )
-        spy_rsp_ratio = fetch_latest_value(conn, spy_rsp_ticker, max_age_hours=2)
+        result = fetch_latest_with_time(conn, spy_rsp_ticker, max_age_hours=staleness_hours)
+        if result is not None:
+            spy_rsp_ratio, spy_rsp_time = result
+            timestamps.append(spy_rsp_time)
+        else:
+            spy_rsp_ratio = None
 
         smh_ticker = components.get("smh_relative", {}).get("ticker_a", "SMH")
-        smh_value = fetch_latest_value(conn, smh_ticker, max_age_hours=2)
+        result = fetch_latest_with_time(conn, smh_ticker, max_age_hours=staleness_hours)
+        if result is not None:
+            smh_value, smh_time = result
+            timestamps.append(smh_time)
+        else:
+            smh_value = None
 
         spy_ticker = components.get("smh_relative", {}).get("ticker_b", "SPY")
-        spy_value = fetch_latest_value(conn, spy_ticker, max_age_hours=2)
+        result = fetch_latest_with_time(conn, spy_ticker, max_age_hours=staleness_hours)
+        if result is not None:
+            spy_value, spy_time = result
+            timestamps.append(spy_time)
+        else:
+            spy_value = None
 
         score = score_ai_concentration_from_values(
             spy_rsp_ratio, smh_value, spy_value, config,
@@ -114,7 +138,8 @@ def score_ai_concentration(db_url: str, config: dict[str, Any], ticker_prefix: s
             logger.warning("AI Concentration: no input data available, skipping score write")
             return None
 
-        write_score(conn, f"{ticker_prefix}SCORE_AI_CONCENTRATION", score)
+        data_time = min(timestamps) if timestamps else None
+        write_score(conn, f"{ticker_prefix}SCORE_AI_CONCENTRATION", score, data_time=data_time)
     finally:
         conn.close()
 

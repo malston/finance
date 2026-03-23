@@ -2,8 +2,12 @@
 
 Tests cover: max pairwise correlation selection, VIX scoring,
 composite scoring, linear interpolation edge cases,
-clamping at 0 and 100, missing data renormalization.
+clamping at 0 and 100, missing data renormalization,
+staleness_hours forwarding, and data_time tracking.
 """
+
+from datetime import datetime, timezone
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -102,94 +106,137 @@ class TestScoreContagionFromValues:
     """Test the pure scoring logic without DB access."""
 
     def test_all_at_midpoint(self):
-        # correlation=0.4 (mid of 0.1-0.7), VIX=27.5 (mid of 15-40)
-        result = score_contagion_from_values(
-            max_corr=0.4,
-            vix_value=27.5,
-            config=CONTAGION_CONFIG,
-        )
+        result = score_contagion_from_values(max_corr=0.4, vix_value=27.5, config=CONTAGION_CONFIG)
         assert result == pytest.approx(50.0, abs=0.5)
 
     def test_all_at_minimum(self):
-        result = score_contagion_from_values(
-            max_corr=0.1,
-            vix_value=15.0,
-            config=CONTAGION_CONFIG,
-        )
+        result = score_contagion_from_values(max_corr=0.1, vix_value=15.0, config=CONTAGION_CONFIG)
         assert result == pytest.approx(0.0)
 
     def test_all_at_maximum(self):
-        result = score_contagion_from_values(
-            max_corr=0.7,
-            vix_value=40.0,
-            config=CONTAGION_CONFIG,
-        )
+        result = score_contagion_from_values(max_corr=0.7, vix_value=40.0, config=CONTAGION_CONFIG)
         assert result == pytest.approx(100.0)
 
     def test_high_correlation_dominates(self):
-        # High correlation (0.7=100), low VIX (0)
-        result = score_contagion_from_values(
-            max_corr=0.7,
-            vix_value=15.0,
-            config=CONTAGION_CONFIG,
-        )
-        # max_corr=100 * 0.60, vix=0 * 0.40
-        # = 60 / 1.0 = 60
+        result = score_contagion_from_values(max_corr=0.7, vix_value=15.0, config=CONTAGION_CONFIG)
         assert result == pytest.approx(60.0, abs=0.1)
 
     def test_missing_correlation_renormalizes(self):
-        # When max_corr is None, only VIX contributes
-        result = score_contagion_from_values(
-            max_corr=None,
-            vix_value=27.5,
-            config=CONTAGION_CONFIG,
-        )
-        # VIX=50, weight 0.40 -> renormalized: 50*0.40 / 0.40 = 50
+        result = score_contagion_from_values(max_corr=None, vix_value=27.5, config=CONTAGION_CONFIG)
         assert result == pytest.approx(50.0, abs=0.5)
 
     def test_missing_vix_renormalizes(self):
-        result = score_contagion_from_values(
-            max_corr=0.4,
-            vix_value=None,
-            config=CONTAGION_CONFIG,
-        )
-        # max_corr=50, weight 0.60 -> renormalized: 50*0.60 / 0.60 = 50
+        result = score_contagion_from_values(max_corr=0.4, vix_value=None, config=CONTAGION_CONFIG)
         assert result == pytest.approx(50.0, abs=0.5)
 
     def test_all_missing_returns_none(self):
-        result = score_contagion_from_values(
-            max_corr=None,
-            vix_value=None,
-            config=CONTAGION_CONFIG,
-        )
+        result = score_contagion_from_values(max_corr=None, vix_value=None, config=CONTAGION_CONFIG)
         assert result is None
 
     def test_clamped_below_zero(self):
-        # All inputs well below thresholds
-        result = score_contagion_from_values(
-            max_corr=0.0,
-            vix_value=10.0,
-            config=CONTAGION_CONFIG,
-        )
+        result = score_contagion_from_values(max_corr=0.0, vix_value=10.0, config=CONTAGION_CONFIG)
         assert result == pytest.approx(0.0)
 
     def test_clamped_above_100(self):
-        # All inputs well above thresholds
-        result = score_contagion_from_values(
-            max_corr=0.95,
-            vix_value=60.0,
-            config=CONTAGION_CONFIG,
-        )
+        result = score_contagion_from_values(max_corr=0.95, vix_value=60.0, config=CONTAGION_CONFIG)
         assert result == pytest.approx(100.0)
 
     def test_story_acceptance_values(self):
         """Verify with the AC seed values: corr=0.5, VIX=28."""
-        result = score_contagion_from_values(
-            max_corr=0.5,
-            vix_value=28.0,
-            config=CONTAGION_CONFIG,
-        )
-        # max_corr: (0.5-0.1)/(0.7-0.1)*100 = 66.67
-        # vix: (28-15)/(40-15)*100 = 52.0
-        # composite: 66.67*0.60 + 52.0*0.40 = 40.0 + 20.8 = 60.8
+        result = score_contagion_from_values(max_corr=0.5, vix_value=28.0, config=CONTAGION_CONFIG)
         assert result == pytest.approx(60.8, abs=0.1)
+
+
+# ---- Staleness-aware fetching and data_time tracking ----
+
+
+class TestStalenessHoursForwarding:
+    """Verify staleness_hours parameter is forwarded to all fetch_latest_with_time calls."""
+
+    @patch("scoring.contagion.psycopg2.connect")
+    @patch("scoring.contagion.write_score")
+    @patch("scoring.contagion.fetch_latest_with_time")
+    def test_staleness_hours_defaults_to_2(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        t = datetime(2026, 3, 20, 16, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.side_effect = [(0.5, t), (0.3, t), (0.2, t), (28.0, t)]
+        from scoring.contagion import score_contagion
+        score_contagion("fake_db_url", CONTAGION_CONFIG)
+        assert mock_fetch_with_time.call_count == 4
+        for c in mock_fetch_with_time.call_args_list:
+            assert c.kwargs.get("max_age_hours") == 2
+
+    @patch("scoring.contagion.psycopg2.connect")
+    @patch("scoring.contagion.write_score")
+    @patch("scoring.contagion.fetch_latest_with_time")
+    def test_staleness_hours_48_forwarded(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        t = datetime(2026, 3, 20, 16, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.side_effect = [(0.5, t), (0.3, t), (0.2, t), (28.0, t)]
+        from scoring.contagion import score_contagion
+        score_contagion("fake_db_url", CONTAGION_CONFIG, staleness_hours=48)
+        assert mock_fetch_with_time.call_count == 4
+        for c in mock_fetch_with_time.call_args_list:
+            assert c.kwargs.get("max_age_hours") == 48
+
+
+class TestDataTimeTracking:
+    """Verify data_time passed to write_score is the min of all source timestamps."""
+
+    @patch("scoring.contagion.psycopg2.connect")
+    @patch("scoring.contagion.write_score")
+    @patch("scoring.contagion.fetch_latest_with_time")
+    def test_data_time_is_min_of_all_source_timestamps(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        t1 = datetime(2026, 3, 20, 14, 0, tzinfo=timezone.utc)
+        t2 = datetime(2026, 3, 20, 15, 0, tzinfo=timezone.utc)
+        t3 = datetime(2026, 3, 20, 16, 0, tzinfo=timezone.utc)
+        t4 = datetime(2026, 3, 20, 13, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.side_effect = [(0.5, t1), (0.3, t2), (0.2, t3), (28.0, t4)]
+        from scoring.contagion import score_contagion
+        score_contagion("fake_db_url", CONTAGION_CONFIG)
+        mock_write.assert_called_once()
+        _, kwargs = mock_write.call_args
+        assert kwargs.get("data_time") == t4
+
+    @patch("scoring.contagion.psycopg2.connect")
+    @patch("scoring.contagion.write_score")
+    @patch("scoring.contagion.fetch_latest_with_time")
+    def test_data_time_when_some_fetches_return_none(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """When 2 of 4 fetches return None, data_time is min of remaining 2."""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        t1 = datetime(2026, 3, 20, 15, 0, tzinfo=timezone.utc)
+        t2 = datetime(2026, 3, 20, 12, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.side_effect = [None, (0.3, t1), None, (28.0, t2)]
+        from scoring.contagion import score_contagion
+        score_contagion("fake_db_url", CONTAGION_CONFIG)
+        mock_write.assert_called_once()
+        _, kwargs = mock_write.call_args
+        assert kwargs.get("data_time") == t2
+
+    @patch("scoring.contagion.psycopg2.connect")
+    @patch("scoring.contagion.write_score")
+    @patch("scoring.contagion.fetch_latest_with_time")
+    def test_no_write_when_all_fetches_return_none(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """When all fetches return None, score is None and write_score is not called."""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        mock_fetch_with_time.return_value = None
+        from scoring.contagion import score_contagion
+        result = score_contagion("fake_db_url", CONTAGION_CONFIG)
+        assert result is None
+        mock_write.assert_not_called()
