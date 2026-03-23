@@ -31,6 +31,7 @@ _SEED_TICKERS = [
     "SPY_RSP_RATIO", "SMH", "SPY",
     "CL=F", "EWT",
     "VIXY",
+    "CORR_CREDIT_TECH", "CORR_CREDIT_ENERGY", "CORR_TECH_ENERGY",
 ]
 _SCORE_TICKERS = [
     "SCORE_PRIVATE_CREDIT",
@@ -40,6 +41,7 @@ _SCORE_TICKERS = [
     "SCORE_COMPOSITE",
 ]
 _ALL_TICKERS = _SEED_TICKERS + _SCORE_TICKERS
+_ALERT_RULE_IDS = ["composite_critical", "vix_spike", "contagion_spike"]
 
 
 @pytest.fixture(scope="module")
@@ -88,8 +90,14 @@ def clean_test_data(db_conn):
                 "DELETE FROM time_series WHERE ticker = ANY(%s)",
                 (_ALL_TICKERS,),
             )
-            cur.execute("DELETE FROM alert_history WHERE rule_id LIKE 'e2e_%%'")
-            cur.execute("DELETE FROM alert_state WHERE rule_id LIKE 'e2e_%%'")
+            cur.execute(
+                "DELETE FROM alert_history WHERE rule_id = ANY(%s)",
+                (_ALERT_RULE_IDS,),
+            )
+            cur.execute(
+                "DELETE FROM alert_state WHERE rule_id = ANY(%s)",
+                (_ALERT_RULE_IDS,),
+            )
     _clean()
     yield
     _clean()
@@ -114,6 +122,9 @@ def seed_market_data(db_conn, data_timestamp):
         "CL=F": 80.0,                  # Crude oil
         "EWT": 50.0,                   # Taiwan ETF
         "VIXY": 25.0,                  # VIX proxy: elevated
+        "CORR_CREDIT_TECH": 0.45,      # Cross-domain correlation
+        "CORR_CREDIT_ENERGY": 0.35,    # Cross-domain correlation
+        "CORR_TECH_ENERGY": 0.55,      # Cross-domain correlation
     }
 
     with db_conn.cursor() as cur:
@@ -154,7 +165,7 @@ def seed_market_data(db_conn, data_timestamp):
                 "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
                 (ts, "BAMLH0A0HYM2", hy_val),
             )
-            # SPY_RSP_RATIO: SMA-200 needs history
+            # SPY_RSP_RATIO: scorer uses latest value via fetch_latest_with_time
             ratio_val = 1.75 + (days_back % 4) * 0.01
             cur.execute(
                 "INSERT INTO time_series (time, ticker, value, source) "
@@ -355,7 +366,7 @@ class TestStalenessWindowFallback:
         sub-components are sufficient.
         """
         config_no_staleness = copy.deepcopy(scoring_config)
-        del config_no_staleness["staleness"]
+        config_no_staleness.pop("staleness", None)
 
         ai = score_ai_concentration(db_url, config_no_staleness, staleness_hours=2)
         ct = score_contagion(db_url, config_no_staleness, staleness_hours=2)
@@ -374,7 +385,7 @@ class TestStalenessWindowFallback:
         the scorer produces a partial score from those two sub-components.
         """
         config_no_staleness = copy.deepcopy(scoring_config)
-        del config_no_staleness["staleness"]
+        config_no_staleness.pop("staleness", None)
 
         eg = score_energy_geo(db_url, config_no_staleness, staleness_hours=2)
         assert eg is not None, "Energy/Geo returned None despite lookback sub-components"
@@ -390,7 +401,7 @@ class TestStalenessWindowFallback:
         scorer produces a score from just the placeholder sub-component.
         """
         config_no_staleness = copy.deepcopy(scoring_config)
-        del config_no_staleness["staleness"]
+        config_no_staleness.pop("staleness", None)
 
         pc = score_private_credit(db_url, config_no_staleness, staleness_hours=2)
 
@@ -415,7 +426,7 @@ class TestStalenessWindowFallback:
         The composite renormalizes from the 2 available domains.
         """
         config_no_staleness = copy.deepcopy(scoring_config)
-        del config_no_staleness["staleness"]
+        config_no_staleness.pop("staleness", None)
 
         pc = score_private_credit(db_url, config_no_staleness, staleness_hours=2)
         score_ai_concentration(db_url, config_no_staleness, staleness_hours=2)
@@ -428,9 +439,9 @@ class TestStalenessWindowFallback:
         assert 0 <= comp <= 100
 
         # Verify composite is a weighted average of only the 2 available domains
-        # Weights: private_credit=0.30, energy_geo=0.25, renormalized to sum to 1
-        pc_weight = 0.30
-        eg_weight = 0.25
+        domains = config_no_staleness["scoring"]["composite"]["domains"]
+        pc_weight = domains["private_credit"]["weight"]
+        eg_weight = domains["energy_geo"]["weight"]
         total = pc_weight + eg_weight
         expected = round((pc * pc_weight + eg * eg_weight) / total, 2)
         assert comp == expected, (
