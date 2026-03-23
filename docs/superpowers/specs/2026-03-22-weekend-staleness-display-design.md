@@ -17,7 +17,7 @@ Display-only change. The scoring pipeline's 2-hour staleness window remains unto
 
 ### Staleness threshold
 
-A score is considered "aged" when `updated_at` is older than 30 minutes. This threshold is defined as a constant in the component (not config-driven -- YAGNI).
+A score is considered "aged" when `updated_at` is older than 30 minutes. This threshold is defined as a shared utility constant (`STALENESS_THRESHOLD_MS`) in `src/lib/format-score-age.ts` (not config-driven -- YAGNI).
 
 ### CompositeScore component
 
