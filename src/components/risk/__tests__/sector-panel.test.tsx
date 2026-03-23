@@ -41,12 +41,14 @@ const MOCK_SCORES = {
       level: "HIGH",
       weight: 0.3,
       color: "#f97316",
+      updated_at: "2026-03-20T15:00:00Z",
     },
     contagion: {
       score: 61,
       level: "HIGH",
       weight: 0.25,
       color: "#f97316",
+      updated_at: "2026-03-20T15:00:00Z",
     },
   },
   updated_at: "2026-03-20T15:00:00Z",
@@ -227,6 +229,150 @@ describe("SectorPanel", () => {
       const panel = screen.getByTestId("sector-panel-private_credit");
       expect(panel.style.borderColor).toContain("249, 115, 22");
     });
+  });
+
+  it("fetches scores with framework parameter", async () => {
+    mockAllFetches();
+    render(<SectorPanel domain={CREDIT_DOMAIN} defaultExpanded={false} />, {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      const scoreCalls = mockFetch.mock.calls.filter((c: string[]) =>
+        c[0].includes("/api/risk/scores"),
+      );
+      expect(scoreCalls.length).toBeGreaterThanOrEqual(1);
+      expect(scoreCalls[0][0]).toContain("?framework=bookstaber");
+    });
+  });
+
+  it("shows 'as of' timestamp when score data is aged", async () => {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/api/risk/scores")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ...MOCK_SCORES,
+            updated_at: twoHoursAgo,
+            domains: {
+              ...MOCK_SCORES.domains,
+              private_credit: {
+                ...MOCK_SCORES.domains.private_credit,
+                updated_at: twoHoursAgo,
+              },
+              contagion: {
+                ...MOCK_SCORES.domains.contagion,
+                updated_at: twoHoursAgo,
+              },
+            },
+          }),
+        });
+      }
+      if (url.includes("/api/risk/timeseries")) {
+        const params = new URL(url, "http://localhost").searchParams;
+        const ticker = params.get("ticker") || "UNKNOWN";
+        return Promise.resolve({
+          ok: true,
+          json: async () => makeTimeseries(ticker),
+        });
+      }
+      return Promise.resolve({ ok: false, json: async () => ({}) });
+    });
+
+    render(<SectorPanel domain={CREDIT_DOMAIN} defaultExpanded={false} />, {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      const ageEl = screen.getByTestId("sector-panel-score-age");
+      expect(ageEl).toBeInTheDocument();
+      expect(ageEl.textContent).toContain("as of");
+      expect(ageEl.textContent).toContain("ET");
+    });
+  });
+
+  it("hides 'as of' timestamp when score data is fresh", async () => {
+    const oneMinAgo = new Date(Date.now() - 60 * 1000).toISOString();
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/api/risk/scores")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ...MOCK_SCORES,
+            updated_at: oneMinAgo,
+            domains: {
+              ...MOCK_SCORES.domains,
+              private_credit: {
+                ...MOCK_SCORES.domains.private_credit,
+                updated_at: oneMinAgo,
+              },
+              contagion: {
+                ...MOCK_SCORES.domains.contagion,
+                updated_at: oneMinAgo,
+              },
+            },
+          }),
+        });
+      }
+      if (url.includes("/api/risk/timeseries")) {
+        const params = new URL(url, "http://localhost").searchParams;
+        const ticker = params.get("ticker") || "UNKNOWN";
+        return Promise.resolve({
+          ok: true,
+          json: async () => makeTimeseries(ticker),
+        });
+      }
+      return Promise.resolve({ ok: false, json: async () => ({}) });
+    });
+
+    render(<SectorPanel domain={CREDIT_DOMAIN} defaultExpanded={false} />, {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("threat-gauge")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("sector-panel-score-age")).toBeNull();
+  });
+
+  it("hides 'as of' timestamp when domain has score but null updated_at", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/api/risk/scores")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ...MOCK_SCORES,
+            domains: {
+              ...MOCK_SCORES.domains,
+              private_credit: {
+                ...MOCK_SCORES.domains.private_credit,
+                score: 68,
+                updated_at: null,
+              },
+            },
+          }),
+        });
+      }
+      if (url.includes("/api/risk/timeseries")) {
+        const params = new URL(url, "http://localhost").searchParams;
+        const ticker = params.get("ticker") || "UNKNOWN";
+        return Promise.resolve({
+          ok: true,
+          json: async () => makeTimeseries(ticker),
+        });
+      }
+      return Promise.resolve({ ok: false, json: async () => ({}) });
+    });
+
+    render(<SectorPanel domain={CREDIT_DOMAIN} defaultExpanded={false} />, {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("threat-gauge")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("sector-panel-score-age")).toBeNull();
   });
 
   it("fetches domain score from /api/risk/scores", async () => {

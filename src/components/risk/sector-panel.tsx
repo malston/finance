@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { C } from "@/lib/theme";
 import type { DomainConfig } from "@/lib/domain-config";
+import { useFramework } from "@/lib/framework-context";
+import { isScoreAged, formatScoreTimestamp } from "@/lib/format-score-age";
 import { useSourceHealth } from "@/hooks/use-source-health";
 import { useFreshness } from "@/hooks/use-freshness";
 import { ThreatGauge } from "./threat-gauge";
@@ -32,6 +34,7 @@ interface ScoresResponse {
       weight: number;
       level: string | null;
       color: string | null;
+      updated_at: string | null;
     }
   >;
   updated_at: string | null;
@@ -61,13 +64,14 @@ export function SectorPanel({
   defaultExpanded = false,
 }: SectorPanelProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const { framework } = useFramework();
   const { isTickerStale, getTickerStaleness } = useSourceHealth();
   const { getTickerFreshness } = useFreshness();
 
   const { data: scores } = useQuery<ScoresResponse>({
-    queryKey: ["risk-scores"],
+    queryKey: ["risk-scores", framework],
     queryFn: async () => {
-      const res = await fetch("/api/risk/scores");
+      const res = await fetch(`/api/risk/scores?framework=${framework}`);
       if (!res.ok) throw new Error("Failed to fetch scores");
       return res.json();
     },
@@ -77,6 +81,7 @@ export function SectorPanel({
   const domainScore = scores?.domains[domain.scoreKey];
   const score = domainScore?.score ?? null;
   const scoreColor = domainScore?.color ?? domain.color;
+  const domainUpdatedAt = domainScore?.updated_at ?? null;
 
   const { data: tickerData } = useQuery<Record<string, TimeSeriesRow[]>>({
     queryKey: ["sector-timeseries", domain.scoreKey],
@@ -162,6 +167,19 @@ export function SectorPanel({
             >
               {annotateText(domain.description)}
             </div>
+            {domainUpdatedAt && isScoreAged(domainUpdatedAt) && (
+              <div
+                data-testid="sector-panel-score-age"
+                style={{
+                  fontSize: 10,
+                  color: C.textDim,
+                  fontFamily: "var(--font-mono)",
+                  marginTop: 1,
+                }}
+              >
+                {formatScoreTimestamp(domainUpdatedAt)}
+              </div>
+            )}
           </div>
         </div>
 
