@@ -428,14 +428,16 @@ class TestTickerPrefixOnDomainScorers:
 
     @patch("scoring.composite.psycopg2.connect")
     @patch("scoring.composite.write_score")
-    @patch("scoring.composite.fetch_latest_value")
+    @patch("scoring.composite.fetch_latest_with_time")
     def test_composite_writes_prefixed_ticker(
         self, mock_fetch, mock_write, mock_connect,
     ):
         mock_conn = MagicMock()
         mock_connect.return_value = mock_conn
-        # Return a score for each domain
-        mock_fetch.side_effect = [60.0, 50.0, 70.0, 55.0]
+        from datetime import datetime, timezone
+        ts = datetime(2026, 3, 21, 16, 0, 0, tzinfo=timezone.utc)
+        # Return (value, timestamp) tuples for each domain
+        mock_fetch.side_effect = [(60.0, ts), (50.0, ts), (70.0, ts), (55.0, ts)]
 
         from scoring.composite import score_composite
         yardeni_composite_config = {
@@ -485,13 +487,15 @@ class TestYardeniCompositeReadsPrefixedTickers:
 
     @patch("scoring.composite.psycopg2.connect")
     @patch("scoring.composite.write_score")
-    @patch("scoring.composite.fetch_latest_value")
+    @patch("scoring.composite.fetch_latest_with_time")
     def test_reads_yardeni_prefixed_domain_tickers(
         self, mock_fetch, mock_write, mock_connect,
     ):
         mock_conn = MagicMock()
         mock_connect.return_value = mock_conn
-        mock_fetch.side_effect = [60.0, 50.0, 70.0, 55.0]
+        from datetime import datetime, timezone
+        ts = datetime(2026, 3, 21, 16, 0, 0, tzinfo=timezone.utc)
+        mock_fetch.side_effect = [(60.0, ts), (50.0, ts), (70.0, ts), (55.0, ts)]
 
         yardeni_composite_config = {
             "scoring": {
@@ -527,7 +531,7 @@ class TestYardeniCompositeReadsPrefixedTickers:
         from scoring.composite import score_composite
         score_composite("fake_db_url", yardeni_composite_config, ticker_prefix="YARDENI_")
 
-        # Verify fetch_latest_value was called with YARDENI_SCORE_* tickers
+        # Verify fetch_latest_with_time was called with YARDENI_SCORE_* tickers
         fetch_calls = mock_fetch.call_args_list
         fetched_tickers = [call[0][1] for call in fetch_calls]
         assert "YARDENI_SCORE_PRIVATE_CREDIT" in fetched_tickers
