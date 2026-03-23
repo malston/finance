@@ -41,7 +41,6 @@ _SCORE_TICKERS = [
     "SCORE_COMPOSITE",
 ]
 _ALL_TICKERS = _SEED_TICKERS + _SCORE_TICKERS
-_ALERT_RULE_IDS = ["composite_critical", "vix_spike", "contagion_spike"]
 
 
 @pytest.fixture(scope="module")
@@ -57,7 +56,8 @@ def db_conn(db_url):
     conn = psycopg2.connect(db_url)
     conn.autocommit = True
     yield conn
-    conn.close()
+    if not conn.closed:
+        conn.close()
 
 
 @pytest.fixture(scope="module")
@@ -73,31 +73,50 @@ def alert_config():
 
 @pytest.fixture(scope="module")
 def data_timestamp():
-    """Timestamp 24 hours ago, simulating Friday close data on a Saturday."""
-    return datetime.now(timezone.utc) - timedelta(hours=24)
+    """Most recent Friday 4 PM ET (market close), simulating weekend scoring.
+
+    Pinned to a specific day-of-week so the test semantics are consistent
+    regardless of when the suite runs. The 66h off-hours window covers
+    Friday 4 PM to Monday 10 AM ET.
+    """
+    now = datetime.now(timezone.utc)
+    # Walk back to the most recent Friday
+    days_since_friday = (now.weekday() - 4) % 7
+    if days_since_friday == 0 and now.hour < 21:
+        days_since_friday = 7  # Before Friday close, use previous Friday
+    last_friday = now - timedelta(days=days_since_friday)
+    # Friday 4 PM ET = 21:00 UTC (EDT) or 20:00 UTC (EST); use 21:00 as safe default
+    return last_friday.replace(hour=21, minute=0, second=0, microsecond=0)
 
 
 @pytest.fixture(autouse=True)
-def clean_test_data(db_conn):
+def clean_test_data(db_conn, alert_config):
     """Remove ALL rows for test tickers before and after each test.
 
     Deletes regardless of source to prevent interference from the live
     correlation service writing rows while tests run.
     """
+    alert_rule_ids = [r["id"] for r in alert_config["alerts"]["rules"]]
+
     def _clean():
-        with db_conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM time_series WHERE ticker = ANY(%s)",
-                (_ALL_TICKERS,),
-            )
-            cur.execute(
-                "DELETE FROM alert_history WHERE rule_id = ANY(%s)",
-                (_ALERT_RULE_IDS,),
-            )
-            cur.execute(
-                "DELETE FROM alert_state WHERE rule_id = ANY(%s)",
-                (_ALERT_RULE_IDS,),
-            )
+        if db_conn.closed:
+            pytest.fail("Database connection is closed; cannot clean test data")
+        try:
+            with db_conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM time_series WHERE ticker = ANY(%s)",
+                    (_ALL_TICKERS,),
+                )
+                cur.execute(
+                    "DELETE FROM alert_history WHERE rule_id = ANY(%s)",
+                    (alert_rule_ids,),
+                )
+                cur.execute(
+                    "DELETE FROM alert_state WHERE rule_id = ANY(%s)",
+                    (alert_rule_ids,),
+                )
+        except psycopg2.Error as exc:
+            pytest.fail(f"Test data cleanup failed (stale data may remain): {exc}")
     _clean()
     yield
     _clean()
@@ -127,65 +146,74 @@ def seed_market_data(db_conn, data_timestamp):
         "CORR_TECH_ENERGY": 0.55,      # Cross-domain correlation
     }
 
-    with db_conn.cursor() as cur:
-        # Insert primary data point
-        for ticker, value in primary_data.items():
-            cur.execute(
-                "INSERT INTO time_series (time, ticker, value, source) "
-                "VALUES (%s, %s, %s, 'e2e_seed') "
-                "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
-                (data_timestamp, ticker, value),
-            )
+    # Use explicit transaction so partial seeding can be rolled back on failure
+    db_conn.autocommit = False
+    try:
+        with db_conn.cursor() as cur:
+            # Insert primary data point
+            for ticker, value in primary_data.items():
+                cur.execute(
+                    "INSERT INTO time_series (time, ticker, value, source) "
+                    "VALUES (%s, %s, %s, 'e2e_seed') "
+                    "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
+                    (data_timestamp, ticker, value),
+                )
 
-        # Seed historical data for lookback calculations (35 days back)
-        # Energy/Geo needs volatility lookback, spread_roc needs 5-day lookback
-        for days_back in range(1, 36):
-            ts = data_timestamp - timedelta(days=days_back)
-            # Crude oil: slight daily variation for volatility calculation
-            crude_val = 78.0 + (days_back % 5) * 0.5
-            cur.execute(
-                "INSERT INTO time_series (time, ticker, value, source) "
-                "VALUES (%s, %s, %s, 'e2e_seed') "
-                "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
-                (ts, "CL=F", crude_val),
-            )
-            # EWT: slight variation for drawdown calculation
-            ewt_val = 52.0 - (days_back % 3) * 0.3
-            cur.execute(
-                "INSERT INTO time_series (time, ticker, value, source) "
-                "VALUES (%s, %s, %s, 'e2e_seed') "
-                "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
-                (ts, "EWT", ewt_val),
-            )
-            # HY spread: historical for rate-of-change
-            hy_val = 420.0 + (days_back % 7) * 2
-            cur.execute(
-                "INSERT INTO time_series (time, ticker, value, source) "
-                "VALUES (%s, %s, %s, 'e2e_seed') "
-                "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
-                (ts, "BAMLH0A0HYM2", hy_val),
-            )
-            # SPY_RSP_RATIO: scorer uses latest value via fetch_latest_with_time
-            ratio_val = 1.75 + (days_back % 4) * 0.01
-            cur.execute(
-                "INSERT INTO time_series (time, ticker, value, source) "
-                "VALUES (%s, %s, %s, 'e2e_seed') "
-                "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
-                (ts, "SPY_RSP_RATIO", ratio_val),
-            )
-            # SMH and SPY for relative performance
-            cur.execute(
-                "INSERT INTO time_series (time, ticker, value, source) "
-                "VALUES (%s, %s, %s, 'e2e_seed') "
-                "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
-                (ts, "SMH", 245.0 + (days_back % 3) * 1.0),
-            )
-            cur.execute(
-                "INSERT INTO time_series (time, ticker, value, source) "
-                "VALUES (%s, %s, %s, 'e2e_seed') "
-                "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
-                (ts, "SPY", 498.0 + (days_back % 3) * 0.5),
-            )
+            # Seed historical data for lookback calculations (35 days back)
+            # Energy/Geo needs volatility lookback, spread_roc needs a reference point ~5 days back
+            for days_back in range(1, 36):
+                ts = data_timestamp - timedelta(days=days_back)
+                # Crude oil: slight daily variation for volatility calculation
+                crude_val = 78.0 + (days_back % 5) * 0.5
+                cur.execute(
+                    "INSERT INTO time_series (time, ticker, value, source) "
+                    "VALUES (%s, %s, %s, 'e2e_seed') "
+                    "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
+                    (ts, "CL=F", crude_val),
+                )
+                # EWT: slight variation for drawdown calculation
+                ewt_val = 52.0 - (days_back % 3) * 0.3
+                cur.execute(
+                    "INSERT INTO time_series (time, ticker, value, source) "
+                    "VALUES (%s, %s, %s, 'e2e_seed') "
+                    "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
+                    (ts, "EWT", ewt_val),
+                )
+                # HY spread: historical for rate-of-change
+                hy_val = 420.0 + (days_back % 7) * 2
+                cur.execute(
+                    "INSERT INTO time_series (time, ticker, value, source) "
+                    "VALUES (%s, %s, %s, 'e2e_seed') "
+                    "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
+                    (ts, "BAMLH0A0HYM2", hy_val),
+                )
+                # SPY_RSP_RATIO: scorer uses latest value via fetch_latest_with_time
+                ratio_val = 1.75 + (days_back % 4) * 0.01
+                cur.execute(
+                    "INSERT INTO time_series (time, ticker, value, source) "
+                    "VALUES (%s, %s, %s, 'e2e_seed') "
+                    "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
+                    (ts, "SPY_RSP_RATIO", ratio_val),
+                )
+                # SMH and SPY for relative performance
+                cur.execute(
+                    "INSERT INTO time_series (time, ticker, value, source) "
+                    "VALUES (%s, %s, %s, 'e2e_seed') "
+                    "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
+                    (ts, "SMH", 245.0 + (days_back % 3) * 1.0),
+                )
+                cur.execute(
+                    "INSERT INTO time_series (time, ticker, value, source) "
+                    "VALUES (%s, %s, %s, 'e2e_seed') "
+                    "ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source",
+                    (ts, "SPY", 498.0 + (days_back % 3) * 0.5),
+                )
+        db_conn.commit()
+    except Exception:
+        db_conn.rollback()
+        raise
+    finally:
+        db_conn.autocommit = True
 
     return primary_data
 
@@ -293,11 +321,11 @@ class TestAlertSuppression:
     def test_no_alerts_fire_during_off_hours(
         self, db_url, db_conn, scoring_config, alert_config, seed_market_data,
     ):
-        """Even when scores exceed thresholds, alerts do not fire during off-hours.
+        """Scorers write scores but no alerts fire when evaluate_rules is not called.
 
-        This mirrors run.py behavior: `if not market_open: skip alert evaluation`.
-        We verify the mechanism by running scorers, then checking that no
-        alert_history rows exist (since we skip evaluate_rules during off-hours).
+        This mirrors run.py behavior: during off-hours, run.py skips the
+        evaluate_rules call entirely. We replicate that pattern here and
+        verify no alert_history rows are created as a result.
         """
         staleness_hours = scoring_config["staleness"]["off_hours_max_age"]
 
@@ -325,11 +353,12 @@ class TestAlertSuppression:
     def test_alerts_can_fire_during_market_hours(
         self, db_url, db_conn, scoring_config, alert_config, seed_market_data,
     ):
-        """Alert evaluation runs normally during market hours (positive control).
+        """Alert evaluation runs without error when called (positive control).
 
-        Writes high scores that exceed alert thresholds, then runs evaluate_rules
-        to verify the alert mechanism works (so the off-hours suppression test
-        above is meaningful).
+        Runs all scorers with the seeded data, then calls evaluate_rules
+        to verify the evaluation mechanism itself is operational. Whether
+        alerts actually fire depends on the seeded score values and
+        consecutive_readings config.
         """
         staleness_hours = scoring_config["staleness"]["off_hours_max_age"]
 

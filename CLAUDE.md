@@ -95,7 +95,7 @@ go test -tags=integration -count=1 ./...  # Integration tests (requires Docker)
 cd services/correlation
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python -m pytest -v -k "not integration and not dispatch_wiring"  # Unit tests only
+python -m pytest -v -k "not integration and not dispatch_wiring and not e2e"  # Unit tests only
 python -m pytest -v                                                # Full suite (requires DATABASE_URL)
 ```
 
