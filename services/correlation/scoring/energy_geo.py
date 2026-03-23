@@ -149,7 +149,7 @@ def score_energy_geo(
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
         ticker_prefix: Prepended to the output ticker name (default: "").
-        staleness_hours: Maximum age in hours for the crude oil level fetch.
+        staleness_hours: Maximum age in hours for source data (default: 2).
 
     Returns:
         The computed score (0-100), or None if insufficient data is available
@@ -162,7 +162,7 @@ def score_energy_geo(
 
     conn = psycopg2.connect(db_url)
     try:
-        # Crude oil level -- staleness-governed
+        # Crude oil level
         crude_ticker = components.get("crude_level", {}).get("ticker", "CL=F")
         result = fetch_latest_with_time(conn, crude_ticker, max_age_hours=staleness_hours)
         if result is not None:

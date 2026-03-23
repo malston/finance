@@ -18,7 +18,7 @@ from alerting.rules_engine import evaluate_rules, load_alert_config
 from correlator import compute_correlations
 from index_builder import compute_domain_indices
 from scoring.ai_concentration import score_ai_concentration
-from scoring.common import get_staleness_hours, is_market_hours, load_scoring_config
+from scoring.common import get_staleness_hours, is_market_hours, load_scoring_config, validate_staleness_config
 from scoring.composite import score_composite
 from scoring.contagion import score_contagion
 from scoring.energy_geo import score_energy_geo
@@ -81,10 +81,12 @@ def main() -> None:
 
     interval = int(os.environ.get("COMPUTE_INTERVAL_SECONDS", "300"))
     scoring_config = load_scoring_config()
+    validate_staleness_config(scoring_config)
 
     yardeni_config_path = os.path.join(os.path.dirname(__file__), "scoring_config_yardeni.yaml")
     try:
         yardeni_config: dict[str, Any] | None = load_scoring_config(yardeni_config_path)
+        validate_staleness_config(yardeni_config)
     except Exception:
         logger.exception(
             "Failed to load Yardeni scoring config from %s; Yardeni scoring disabled",

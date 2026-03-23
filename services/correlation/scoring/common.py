@@ -30,6 +30,36 @@ def load_scoring_config(config_path: str | None = None) -> dict[str, Any]:
         return yaml.safe_load(f)
 
 
+def validate_staleness_config(config: dict[str, Any]) -> None:
+    """Validate the staleness block in a scoring config.
+
+    Raises ValueError if market_open or market_close cannot be parsed as HH:MM.
+    Logs a warning if the staleness block is missing entirely.
+    """
+    staleness = config.get("staleness")
+    if staleness is None:
+        logger.warning(
+            "No 'staleness' block in config; using defaults "
+            "(2h market-hours staleness, no off-hours relaxation)"
+        )
+        return
+
+    for key in ("market_open", "market_close"):
+        value = staleness.get(key)
+        if value is None:
+            continue
+        try:
+            parts = str(value).split(":")
+            if len(parts) != 2:
+                raise ValueError("expected HH:MM")
+            h, m = int(parts[0]), int(parts[1])
+            time(h, m)
+        except (ValueError, IndexError) as exc:
+            raise ValueError(
+                f"staleness.{key} must be HH:MM format, got {value!r}: {exc}"
+            ) from exc
+
+
 def is_market_hours(config: dict[str, Any], now: datetime | None = None) -> bool:
     """Return True if current time is within US market trading hours.
 
@@ -63,7 +93,7 @@ def get_staleness_hours(config: dict[str, Any], now: datetime | None = None) -> 
     """Return the appropriate max_age_hours based on current market schedule.
 
     During market hours, returns the tight window (default 2h).
-    During off-hours, returns the relaxed window (default 2h if not configured).
+    During off-hours, returns the relaxed window (default 48h if not configured).
     If config has no staleness block, returns 2.0 for backward compatibility.
 
     Args:
@@ -76,7 +106,7 @@ def get_staleness_hours(config: dict[str, Any], now: datetime | None = None) -> 
 
     if is_market_hours(config, now=now):
         return float(staleness.get("market_hours_max_age", 2))
-    return float(staleness.get("off_hours_max_age", 2))
+    return float(staleness.get("off_hours_max_age", 48))
 
 
 def linear_score(value: float, low: float, high: float) -> float:
@@ -140,8 +170,9 @@ def write_score(
     """Write a computed score to time_series with the given ticker.
 
     When data_time is provided, the row uses that timestamp instead of now.
-    This preserves source data age for weekend scores so the dashboard
-    "as of" display reflects when the underlying market data is from.
+    This preserves source data age so the dashboard "as of" display
+    reflects when the underlying market data is from, rather than when
+    the score was computed.
     """
     ts = data_time or datetime.now(timezone.utc)
     with conn.cursor() as cur:
