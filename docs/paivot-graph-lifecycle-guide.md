@@ -67,7 +67,7 @@ Paivot-Graph coordinates three CLI tools. Understanding what each does (and does
 | `pvg settings [key=value]`   | View or change project settings                             |
 | `pvg dispatcher on\|off`     | Toggle dispatcher mode                                      |
 
-**Key concept:** When the execution loop is running, you don't decide what happens next -- `pvg loop next --json` does. It returns a JSON decision (`act`, `epic_complete`, `epic_blocked`, `wait`, `rotate`, `complete`) that tells the dispatcher exactly what to do. This prevents the common failure mode of cherry-picking work across epics or skipping review steps.
+**Key concept:** When the execution loop is running, you don't decide what happens next -- `pvg loop next --json` does. It returns a JSON decision (`act`, `epic_complete`, `epic_blocked`, `blocked`, `wait`, `complete`) that tells the dispatcher exactly what to do. This prevents the common failure mode of cherry-picking work across epics or skipping review steps.
 
 ### nd -- The Issue Tracker
 
@@ -310,14 +310,15 @@ The dispatcher calls `pvg loop setup` and enters the iteration cycle.
 1. The dispatcher calls `pvg loop next --json`
 2. The response is a JSON decision:
 
-| Decision        | Meaning              | Action                               |
-| --------------- | -------------------- | ------------------------------------ |
-| `act`           | Work is available    | Spawn developer or PM-Acceptor agent |
-| `epic_complete` | All stories accepted | Run epic completion gate             |
-| `epic_blocked`  | No actionable work   | Escalate to you                      |
-| `wait`          | Agents are working   | Do nothing (background agents)       |
-| `rotate`        | Epic gate passed     | Move to next epic                    |
-| `complete`      | All epics done       | Celebrate                            |
+| Decision        | Meaning                           | Action                                                   |
+| --------------- | --------------------------------- | -------------------------------------------------------- |
+| `act`           | Work is available                 | Spawn developer or PM-Acceptor agent                     |
+| `epic_complete` | All stories accepted              | Run epic completion gate, then auto-advance to next epic |
+| `epic_blocked`  | No actionable work in epic        | Escalate to you                                          |
+| `blocked`       | No actionable work across backlog | Escalate to you                                          |
+| `wait`          | Agents are working                | Do nothing (background agents)                           |
+| `complete`      | All epics done                    | Celebrate                                                |
+| `other`         | Unclassified state                | Inspect and escalate                                     |
 
 3. Priority within the loop: **delivered stories first** (PM-Acceptor), then **rejected stories** (developer rework), then **ready stories** (new development)
 
@@ -412,7 +413,7 @@ You: "/vault-capture"   # Manual trigger to capture session knowledge
 
 **Your interaction:** Review the retro output. Optionally trigger additional knowledge capture with `/vault-capture`.
 
-After the retro, `pvg loop next --json` returns `rotate`, and the loop moves to the next highest-priority epic.
+After the retro, the next `pvg loop next --json` call resolves the next highest-priority epic via `epic_complete` (which auto-advances) or `act` if new work is ready.
 
 ---
 
@@ -489,6 +490,8 @@ Bugs found during execution follow a triage flow:
 All bugs are Priority 0 (P0) -- they block the current epic.
 
 ### Backlog Health
+
+> **`pvg nd` vs `nd`:** The `pvg nd` passthrough auto-routes to the shared live vault (stored in `.git/paivot/nd-vault`). You can use `nd` directly if you set the `--vault` flag or `ND_VAULT` env var, but `pvg nd` is the recommended form within Paivot-Graph workflows.
 
 ```bash
 pvg nd list --status=open       # Open work
@@ -637,26 +640,26 @@ The Financial Risk Monitor scores systemic market risk across four domains every
 
 ### Phase 2: Backlog Creation
 
-The Sr PM read all three documents and created epic **FRM-1twb** ("Time-Aware Staleness Policy") with 16 stories:
+The Sr PM read all three documents and created epic **FRM-1twb** ("Time-Aware Staleness Policy") with ~19 stories across related epics. The core stories (simplified here to 16 for narrative clarity):
 
-| #   | Story                                                        | Type           |
-| --- | ------------------------------------------------------------ | -------------- |
-| 1   | Walking skeleton: `is_market_hours()` + config-driven window | Vertical slice |
-| 2   | `get_staleness_hours()` returning market/off-hours values    | Feature        |
-| 3   | Integrate staleness hours into `_run_scoring_pass`           | Feature        |
-| 4   | Private credit scorer uses staleness window                  | Feature        |
-| 5   | AI concentration scorer uses staleness window                | Feature        |
-| 6   | Energy/geo scorer uses staleness window                      | Feature        |
-| 7   | Contagion scorer uses staleness window                       | Feature        |
-| 8   | Composite scorer passes through staleness                    | Feature        |
-| 9   | `write_score(data_time=)` preserves source timestamps        | Feature        |
-| 10  | Alert evaluation gated behind `is_market_hours()`            | Feature        |
-| 11  | `format-score-age.ts` for "as of" display                    | Feature        |
-| 12  | Dashboard per-domain timestamp display                       | Feature        |
-| 13  | Weekend staleness Playwright e2e test                        | Feature        |
-| 14  | Unit tests for `is_market_hours()` edge cases                | Testing        |
-| 15  | Unit tests for `get_staleness_hours()`                       | Testing        |
-| 16  | **E2e capstone: full pipeline staleness test**               | Capstone       |
+| #   | Story                                                         | Type           |
+| --- | ------------------------------------------------------------- | -------------- |
+| 1   | Walking skeleton: `is_market_hours()` + config-driven window  | Vertical slice |
+| 2   | `get_staleness_hours()` returning market/off-hours values     | Feature        |
+| 3   | Integrate staleness hours into `_run_scoring_pass`            | Feature        |
+| 4   | Private credit scorer uses staleness window                   | Feature        |
+| 5   | AI concentration scorer uses staleness window                 | Feature        |
+| 6   | Energy/geo scorer uses staleness window                       | Feature        |
+| 7   | Contagion scorer uses staleness window                        | Feature        |
+| 8   | Composite scorer passes through staleness                     | Feature        |
+| 9   | `write_score(data_time=)` preserves source timestamps         | Feature        |
+| 10  | Alert evaluation gated behind `is_market_hours()`             | Feature        |
+| 11  | `format-score-age.ts` for "as of" display                     | Feature        |
+| 12  | Dashboard per-domain timestamp display                        | Feature        |
+| 13  | Weekend staleness e2e test suite (pytest against TimescaleDB) | Feature        |
+| 14  | Unit tests for `is_market_hours()` edge cases                 | Testing        |
+| 15  | Unit tests for `get_staleness_hours()`                        | Testing        |
+| 16  | **E2e capstone: full pipeline staleness test**                | Capstone       |
 
 **Key structural choices:**
 
@@ -712,6 +715,8 @@ python -m pytest -v              # 293 tests pass (280 unit + 4 integration + 9 
 # Anchor milestone review: VALIDATED
 # Merged to main via PR #22
 ```
+
+**Post-merge lesson:** The e2e test file (`test_e2e_staleness.py`) was later removed because its `clean_test_data` fixture deleted production data when pytest ran against the shared database. The test itself was sound -- the fixture teardown was the problem. This led to GitHub issue #25 and a fix that separated e2e tests from unit test runs. A reminder that e2e tests with real databases need careful isolation of cleanup logic.
 
 ### Phase 6: Retrospective
 
