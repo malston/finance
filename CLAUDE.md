@@ -196,11 +196,15 @@ Both frameworks score the same raw market data with different weights and threat
 
 ### Scoring Safety
 
-Missing domains are renormalized (weights redistribute). Scorers return `None` (not 0) when data is unavailable -- a score of 0 means "no risk," while `None` means "unknown." `fetch_latest_value` enforces a 2-hour staleness window via `max_age_hours` to prevent stale data from producing misleading scores. Energy/Geo requires a minimum of 2 sub-components to produce a score.
+Missing domains are renormalized (weights redistribute). Scorers return `None` (not 0) when data is unavailable -- a score of 0 means "no risk," while `None` means "unknown." The staleness window is market-hours-aware (configured in `scoring_config.yaml` under the `staleness` block): 2 hours during trading (Mon-Fri 9:30-16:00 ET) to catch real outages, 48 hours during off-hours so Friday's data produces scores through the weekend. Energy/Geo requires a minimum of 2 sub-components to produce a score.
+
+Scorers use `fetch_latest_with_time` to track source data timestamps. Weekend scores carry the source data's timestamp (e.g., Friday's close) rather than the current wall clock, so the dashboard "as of" display accurately reflects when the underlying market data is from.
+
+Alert evaluation is suppressed during off-hours to prevent false alerts from weekend scores.
 
 ### Weekend/Holiday Behavior
 
-On weekends and market holidays, Finnhub returns exchange-close timestamps (Friday 4 PM ET). The 2-hour staleness window correctly rejects this data, so most domain scorers produce `None`. FRED data (daily) may still be fresh enough for Private Credit. The dashboard shows per-domain "as of {timestamp} ET" indicators when a domain's score is older than 30 minutes (see `src/lib/format-score-age.ts`).
+On weekends, Finnhub returns exchange-close timestamps (Friday 4 PM ET). The relaxed 48-hour staleness window allows scorers to produce scores from this data. Score rows are written with the source data timestamp (Friday close), so the dashboard shows per-domain "as of Fri, Mar 20 4:00 PM ET" indicators (see `src/lib/format-score-age.ts`). Market holidays on weekdays are not handled -- the 2-hour market-hours window applies, and scorers produce `None` for domains with stale data (same as pre-feature behavior).
 
 ## Data Source Tiering
 
