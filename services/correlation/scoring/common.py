@@ -5,12 +5,15 @@ database fetch helpers, and config loading used across all scoring modules.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import psycopg2
 import yaml
+
+_ET = ZoneInfo("America/New_York")
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +28,85 @@ def load_scoring_config(config_path: str | None = None) -> dict[str, Any]:
         config_path = str(Path(__file__).parent.parent / "scoring_config.yaml")
     with open(config_path) as f:
         return yaml.safe_load(f)
+
+
+def validate_staleness_config(config: dict[str, Any]) -> None:
+    """Validate the staleness block in a scoring config.
+
+    Raises ValueError if market_open or market_close cannot be parsed as HH:MM.
+    Logs a warning if the staleness block is missing entirely.
+    """
+    staleness = config.get("staleness")
+    if staleness is None:
+        logger.warning(
+            "No 'staleness' block in config; using defaults "
+            "(2h market-hours staleness, no off-hours relaxation)"
+        )
+        return
+
+    for key in ("market_open", "market_close"):
+        value = staleness.get(key)
+        if value is None:
+            continue
+        try:
+            parts = str(value).split(":")
+            if len(parts) != 2:
+                raise ValueError("expected HH:MM")
+            h, m = int(parts[0]), int(parts[1])
+            time(h, m)
+        except (ValueError, IndexError) as exc:
+            raise ValueError(
+                f"staleness.{key} must be HH:MM format, got {value!r}: {exc}"
+            ) from exc
+
+
+def is_market_hours(config: dict[str, Any], now: datetime | None = None) -> bool:
+    """Return True if current time is within US market trading hours.
+
+    Uses the staleness block from config. If missing, returns True (backward compat).
+    Market window is [market_open, market_close) -- inclusive open, exclusive close.
+
+    Args:
+        config: Scoring config dict with optional top-level 'staleness' block.
+        now: Timestamp to evaluate. Defaults to current time if not provided.
+    """
+    staleness = config.get("staleness")
+    if staleness is None:
+        return True
+
+    now_et = (now or datetime.now(_ET)).astimezone(_ET)
+    market_days = staleness.get("market_days", [0, 1, 2, 3, 4])
+    if now_et.weekday() not in market_days:
+        return False
+
+    open_str = staleness.get("market_open", "09:30")
+    close_str = staleness.get("market_close", "16:00")
+    open_h, open_m = (int(x) for x in open_str.split(":"))
+    close_h, close_m = (int(x) for x in close_str.split(":"))
+    market_open = time(open_h, open_m)
+    market_close = time(close_h, close_m)
+
+    return market_open <= now_et.time() < market_close
+
+
+def get_staleness_hours(config: dict[str, Any], now: datetime | None = None) -> float:
+    """Return the appropriate max_age_hours based on current market schedule.
+
+    During market hours, returns the tight window (default 2h).
+    During off-hours, returns the relaxed window (default 48h if not configured).
+    If config has no staleness block, returns 2.0 for backward compatibility.
+
+    Args:
+        config: Scoring config dict with optional top-level 'staleness' block.
+        now: Timestamp to evaluate. Defaults to current time if not provided.
+    """
+    staleness = config.get("staleness")
+    if staleness is None:
+        return 2.0
+
+    if is_market_hours(config, now=now):
+        return float(staleness.get("market_hours_max_age", 2))
+    return float(staleness.get("off_hours_max_age", 48))
 
 
 def linear_score(value: float, low: float, high: float) -> float:
@@ -83,16 +165,23 @@ def write_score(
     conn: psycopg2.extensions.connection,
     ticker: str,
     score: float,
+    data_time: datetime | None = None,
 ) -> None:
-    """Write a computed score to time_series with the given ticker."""
-    now = datetime.now(timezone.utc)
+    """Write a computed score to time_series with the given ticker.
+
+    When data_time is provided, the row uses that timestamp instead of now.
+    This preserves source data age so the dashboard "as of" display
+    reflects when the underlying market data is from, rather than when
+    the score was computed.
+    """
+    ts = data_time or datetime.now(timezone.utc)
     with conn.cursor() as cur:
         cur.execute(
             "INSERT INTO time_series (time, ticker, value, source) "
             "VALUES (%s, %s, %s, 'computed') "
             "ON CONFLICT (time, ticker) DO UPDATE SET "
             "value = EXCLUDED.value, source = EXCLUDED.source",
-            (now, ticker, score),
+            (ts, ticker, score),
         )
     conn.commit()
 
@@ -116,7 +205,7 @@ def fetch_latest_value(
     if max_age_hours is not None:
         query = (
             "SELECT value FROM time_series "
-            "WHERE ticker = %s AND time > NOW() - make_interval(hours => %s) "
+            "WHERE ticker = %s AND time > NOW() - make_interval(hours => %s::int) "
             "ORDER BY time DESC LIMIT 1"
         )
         params = (ticker, max_age_hours)
@@ -134,6 +223,58 @@ def fetch_latest_value(
 
     if row:
         return row[0]
+
+    if max_age_hours is not None:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM time_series WHERE ticker = %s LIMIT 1",
+                (ticker,),
+            )
+            exists = cur.fetchone()
+        if exists:
+            logger.warning(
+                "Stale data for %s: exists in DB but older than %s hours",
+                ticker, max_age_hours,
+            )
+        else:
+            logger.debug("No data found for %s", ticker)
+    return None
+
+
+def fetch_latest_with_time(
+    conn: psycopg2.extensions.connection,
+    ticker: str,
+    max_age_hours: float | None = None,
+) -> tuple[float, datetime] | None:
+    """Fetch the most recent value and timestamp for a ticker.
+
+    Like fetch_latest_value but returns (value, timestamp) so callers
+    can track the age of the source data they used for scoring.
+    """
+    if max_age_hours is not None and max_age_hours <= 0:
+        raise ValueError(f"max_age_hours must be positive, got {max_age_hours}")
+
+    if max_age_hours is not None:
+        query = (
+            "SELECT value, time FROM time_series "
+            "WHERE ticker = %s AND time > NOW() - make_interval(hours => %s::int) "
+            "ORDER BY time DESC LIMIT 1"
+        )
+        params = (ticker, max_age_hours)
+    else:
+        query = (
+            "SELECT value, time FROM time_series "
+            "WHERE ticker = %s "
+            "ORDER BY time DESC LIMIT 1"
+        )
+        params = (ticker,)
+
+    with conn.cursor() as cur:
+        cur.execute(query, params)
+        row = cur.fetchone()
+
+    if row:
+        return (row[0], row[1])
 
     if max_age_hours is not None:
         with conn.cursor() as cur:

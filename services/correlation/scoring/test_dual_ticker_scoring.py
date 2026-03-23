@@ -9,6 +9,7 @@ Tests cover:
 - _run_scoring_pass failure isolation (one scorer failing doesn't stop others)
 """
 
+from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -336,13 +337,13 @@ class TestTickerPrefixOnDomainScorers:
     @patch("scoring.private_credit._fetch_value_days_ago")
     @patch("scoring.private_credit.psycopg2.connect")
     @patch("scoring.private_credit.write_score")
-    @patch("scoring.private_credit.fetch_latest_value")
+    @patch("scoring.private_credit.fetch_latest_with_time")
     def test_private_credit_writes_prefixed_ticker(
         self, mock_fetch, mock_write, mock_connect, mock_fetch_days,
     ):
         mock_conn = MagicMock()
         mock_connect.return_value = mock_conn
-        mock_fetch.return_value = 450.0
+        mock_fetch.return_value = (450.0, datetime(2026, 3, 20, 20, 0, tzinfo=timezone.utc))
         mock_fetch_days.return_value = 400.0
 
         from scoring.private_credit import score_private_credit
@@ -355,13 +356,13 @@ class TestTickerPrefixOnDomainScorers:
     @patch("scoring.private_credit._fetch_value_days_ago")
     @patch("scoring.private_credit.psycopg2.connect")
     @patch("scoring.private_credit.write_score")
-    @patch("scoring.private_credit.fetch_latest_value")
+    @patch("scoring.private_credit.fetch_latest_with_time")
     def test_private_credit_default_prefix_is_empty(
         self, mock_fetch, mock_write, mock_connect, mock_fetch_days,
     ):
         mock_conn = MagicMock()
         mock_connect.return_value = mock_conn
-        mock_fetch.return_value = 450.0
+        mock_fetch.return_value = (450.0, datetime(2026, 3, 20, 20, 0, tzinfo=timezone.utc))
         mock_fetch_days.return_value = 400.0
 
         from scoring.private_credit import score_private_credit
@@ -373,13 +374,13 @@ class TestTickerPrefixOnDomainScorers:
 
     @patch("scoring.ai_concentration.psycopg2.connect")
     @patch("scoring.ai_concentration.write_score")
-    @patch("scoring.ai_concentration.fetch_latest_value")
+    @patch("scoring.ai_concentration.fetch_latest_with_time")
     def test_ai_concentration_writes_prefixed_ticker(
         self, mock_fetch, mock_write, mock_connect,
     ):
         mock_conn = MagicMock()
         mock_connect.return_value = mock_conn
-        mock_fetch.return_value = 1.8  # SPY_RSP_RATIO
+        mock_fetch.return_value = (1.8, datetime(2026, 3, 20, 20, 0, tzinfo=timezone.utc))
 
         from scoring.ai_concentration import score_ai_concentration
         score_ai_concentration("fake_db_url", BOOKSTABER_AI_CONFIG, ticker_prefix="YARDENI_")
@@ -390,15 +391,14 @@ class TestTickerPrefixOnDomainScorers:
 
     @patch("scoring.energy_geo.psycopg2.connect")
     @patch("scoring.energy_geo.write_score")
-    @patch("scoring.energy_geo.fetch_latest_value")
+    @patch("scoring.energy_geo.fetch_latest_with_time")
     @patch("scoring.energy_geo._fetch_daily_values")
     def test_energy_geo_writes_prefixed_ticker(
         self, mock_daily, mock_fetch, mock_write, mock_connect,
     ):
         mock_conn = MagicMock()
         mock_connect.return_value = mock_conn
-        mock_fetch.return_value = 80.0
-        # Provide enough daily values for volatility and drawdown computation
+        mock_fetch.return_value = (80.0, datetime(2026, 3, 20, 20, 0, tzinfo=timezone.utc))
         mock_daily.return_value = [78.0, 79.0, 80.0, 81.0, 80.0, 79.5, 80.0]
 
         from scoring.energy_geo import score_energy_geo
@@ -410,14 +410,18 @@ class TestTickerPrefixOnDomainScorers:
 
     @patch("scoring.contagion.psycopg2.connect")
     @patch("scoring.contagion.write_score")
-    @patch("scoring.contagion.fetch_latest_value")
+    @patch("scoring.contagion.fetch_latest_with_time")
     def test_contagion_writes_prefixed_ticker(
         self, mock_fetch, mock_write, mock_connect,
     ):
         mock_conn = MagicMock()
         mock_connect.return_value = mock_conn
-        # Return values for correlation tickers and VIX
-        mock_fetch.side_effect = [0.5, 0.3, 0.2, 28.0]
+        mock_fetch.side_effect = [
+            (0.5, datetime(2026, 3, 20, 20, 0, tzinfo=timezone.utc)),
+            (0.3, datetime(2026, 3, 20, 20, 0, tzinfo=timezone.utc)),
+            (0.2, datetime(2026, 3, 20, 20, 0, tzinfo=timezone.utc)),
+            (28.0, datetime(2026, 3, 20, 20, 0, tzinfo=timezone.utc)),
+        ]
 
         from scoring.contagion import score_contagion
         score_contagion("fake_db_url", BOOKSTABER_CONTAGION_CONFIG, ticker_prefix="YARDENI_")
@@ -428,14 +432,16 @@ class TestTickerPrefixOnDomainScorers:
 
     @patch("scoring.composite.psycopg2.connect")
     @patch("scoring.composite.write_score")
-    @patch("scoring.composite.fetch_latest_value")
+    @patch("scoring.composite.fetch_latest_with_time")
     def test_composite_writes_prefixed_ticker(
         self, mock_fetch, mock_write, mock_connect,
     ):
         mock_conn = MagicMock()
         mock_connect.return_value = mock_conn
-        # Return a score for each domain
-        mock_fetch.side_effect = [60.0, 50.0, 70.0, 55.0]
+        from datetime import datetime, timezone
+        ts = datetime(2026, 3, 21, 16, 0, 0, tzinfo=timezone.utc)
+        # Return (value, timestamp) tuples for each domain
+        mock_fetch.side_effect = [(60.0, ts), (50.0, ts), (70.0, ts), (55.0, ts)]
 
         from scoring.composite import score_composite
         yardeni_composite_config = {
@@ -485,13 +491,15 @@ class TestYardeniCompositeReadsPrefixedTickers:
 
     @patch("scoring.composite.psycopg2.connect")
     @patch("scoring.composite.write_score")
-    @patch("scoring.composite.fetch_latest_value")
+    @patch("scoring.composite.fetch_latest_with_time")
     def test_reads_yardeni_prefixed_domain_tickers(
         self, mock_fetch, mock_write, mock_connect,
     ):
         mock_conn = MagicMock()
         mock_connect.return_value = mock_conn
-        mock_fetch.side_effect = [60.0, 50.0, 70.0, 55.0]
+        from datetime import datetime, timezone
+        ts = datetime(2026, 3, 21, 16, 0, 0, tzinfo=timezone.utc)
+        mock_fetch.side_effect = [(60.0, ts), (50.0, ts), (70.0, ts), (55.0, ts)]
 
         yardeni_composite_config = {
             "scoring": {
@@ -527,7 +535,7 @@ class TestYardeniCompositeReadsPrefixedTickers:
         from scoring.composite import score_composite
         score_composite("fake_db_url", yardeni_composite_config, ticker_prefix="YARDENI_")
 
-        # Verify fetch_latest_value was called with YARDENI_SCORE_* tickers
+        # Verify fetch_latest_with_time was called with YARDENI_SCORE_* tickers
         fetch_calls = mock_fetch.call_args_list
         fetched_tickers = [call[0][1] for call in fetch_calls]
         assert "YARDENI_SCORE_PRIVATE_CREDIT" in fetched_tickers
@@ -599,11 +607,11 @@ class TestRunScoringPassIsolation:
         """When one scorer raises, the remaining scorers still execute."""
         call_log = []
 
-        def scorer_ok(db_url, config, ticker_prefix=""):
+        def scorer_ok(db_url, config, ticker_prefix="", **kwargs):
             call_log.append("ok")
             return 50.0
 
-        def scorer_fail(db_url, config, ticker_prefix=""):
+        def scorer_fail(db_url, config, ticker_prefix="", **kwargs):
             call_log.append("fail")
             raise RuntimeError("simulated failure")
 
@@ -620,7 +628,7 @@ class TestRunScoringPassIsolation:
 
     def test_all_scorers_failing_does_not_raise(self):
         """If every scorer raises, _run_scoring_pass completes without raising."""
-        def scorer_fail(db_url, config, ticker_prefix=""):
+        def scorer_fail(db_url, config, ticker_prefix="", **kwargs):
             raise RuntimeError("boom")
 
         with patch("run._SCORERS", [
@@ -633,7 +641,7 @@ class TestRunScoringPassIsolation:
         """The ticker_prefix argument is forwarded to each scorer."""
         received_prefixes = []
 
-        def scorer_capture(db_url, config, ticker_prefix=""):
+        def scorer_capture(db_url, config, ticker_prefix="", **kwargs):
             received_prefixes.append(ticker_prefix)
             return 42.0
 

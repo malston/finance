@@ -474,3 +474,157 @@ class TestRollingVolatilityEdgeCases:
         values = [0.0, 0.0, 0.0, 0.0, 0.0]
         result = compute_rolling_volatility(values)
         assert result is None
+
+
+class TestScoreEnergyGeoStaleness:
+    """Tests for staleness_hours parameter and data_time tracking in score_energy_geo."""
+
+    from datetime import datetime, timezone
+    from unittest.mock import MagicMock, patch
+
+    ENERGY_GEO_CONFIG = {
+        "scoring": {
+            "energy_geo": {
+                "weight": 0.25,
+                "min_components": 2,
+                "components": {
+                    "crude_level": {
+                        "sub_weight": 0.30,
+                        "ticker": "CL=F",
+                        "min_value": 30,
+                        "max_value": 120,
+                    },
+                    "crude_volatility": {
+                        "sub_weight": 0.35,
+                        "ticker": "CL=F",
+                        "lookback_days": 30,
+                        "min_value": 0.15,
+                        "max_value": 0.50,
+                    },
+                    "ewt_drawdown": {
+                        "sub_weight": 0.35,
+                        "ticker": "EWT",
+                        "lookback_days": 252,
+                        "min_value": 0,
+                        "max_value": -0.25,
+                    },
+                },
+            },
+        },
+    }
+
+    @patch("scoring.energy_geo.psycopg2.connect")
+    @patch("scoring.energy_geo.write_score")
+    @patch("scoring.energy_geo.fetch_latest_with_time")
+    @patch("scoring.energy_geo._fetch_daily_values")
+    def test_staleness_hours_defaults_to_2(
+        self, mock_daily, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """fetch_latest_with_time is called with max_age_hours=2 by default."""
+        from datetime import datetime, timezone
+        from unittest.mock import MagicMock
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        crude_time = datetime(2026, 3, 21, 20, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.return_value = (80.0, crude_time)
+        mock_daily.return_value = [78.0, 79.0, 80.0, 81.0, 80.0, 79.5, 80.0]
+
+        from scoring.energy_geo import score_energy_geo
+        score_energy_geo("fake://db", self.ENERGY_GEO_CONFIG)
+
+        mock_fetch_with_time.assert_called_once_with(
+            mock_conn, "CL=F", max_age_hours=2,
+        )
+
+    @patch("scoring.energy_geo.psycopg2.connect")
+    @patch("scoring.energy_geo.write_score")
+    @patch("scoring.energy_geo.fetch_latest_with_time")
+    @patch("scoring.energy_geo._fetch_daily_values")
+    def test_staleness_hours_48_forwarded(
+        self, mock_daily, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """staleness_hours=48 is forwarded to fetch_latest_with_time."""
+        from datetime import datetime, timezone
+        from unittest.mock import MagicMock
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        crude_time = datetime(2026, 3, 21, 20, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.return_value = (80.0, crude_time)
+        mock_daily.return_value = [78.0, 79.0, 80.0, 81.0, 80.0, 79.5, 80.0]
+
+        from scoring.energy_geo import score_energy_geo
+        score_energy_geo("fake://db", self.ENERGY_GEO_CONFIG, staleness_hours=48)
+
+        mock_fetch_with_time.assert_called_once_with(
+            mock_conn, "CL=F", max_age_hours=48,
+        )
+
+    @patch("scoring.energy_geo.psycopg2.connect")
+    @patch("scoring.energy_geo.write_score")
+    @patch("scoring.energy_geo.fetch_latest_with_time")
+    @patch("scoring.energy_geo._fetch_daily_values")
+    def test_fetch_daily_values_unaffected_by_staleness_hours(
+        self, mock_daily, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """_fetch_daily_values is called with the same lookback_days regardless of staleness_hours."""
+        from datetime import datetime, timezone
+        from unittest.mock import MagicMock
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        crude_time = datetime(2026, 3, 21, 20, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.return_value = (80.0, crude_time)
+        mock_daily.return_value = [78.0, 79.0, 80.0, 81.0, 80.0, 79.5, 80.0]
+
+        from scoring.energy_geo import score_energy_geo
+        score_energy_geo("fake://db", self.ENERGY_GEO_CONFIG, staleness_hours=48)
+
+        daily_calls = mock_daily.call_args_list
+        assert len(daily_calls) == 2
+        # Crude volatility: lookback_days=30
+        assert daily_calls[0][0] == (mock_conn, "CL=F", 30)
+        # EWT drawdown: lookback_days=252
+        assert daily_calls[1][0] == (mock_conn, "EWT", 252)
+
+    @patch("scoring.energy_geo.psycopg2.connect")
+    @patch("scoring.energy_geo.write_score")
+    @patch("scoring.energy_geo.fetch_latest_with_time")
+    @patch("scoring.energy_geo._fetch_daily_values")
+    def test_data_time_from_crude_fetch_passed_to_write_score(
+        self, mock_daily, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """The timestamp from fetch_latest_with_time is passed as data_time to write_score."""
+        from datetime import datetime, timezone
+        from unittest.mock import MagicMock
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        crude_time = datetime(2026, 3, 21, 20, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.return_value = (80.0, crude_time)
+        mock_daily.return_value = [78.0, 79.0, 80.0, 81.0, 80.0, 79.5, 80.0]
+
+        from scoring.energy_geo import score_energy_geo
+        score_energy_geo("fake://db", self.ENERGY_GEO_CONFIG)
+
+        mock_write.assert_called_once()
+        call_kwargs = mock_write.call_args
+        assert call_kwargs[1].get("data_time") == crude_time
+
+    @patch("scoring.energy_geo.psycopg2.connect")
+    @patch("scoring.energy_geo.write_score")
+    @patch("scoring.energy_geo.fetch_latest_with_time")
+    @patch("scoring.energy_geo._fetch_daily_values")
+    def test_data_time_none_when_crude_fetch_returns_none(
+        self, mock_daily, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """When crude fetch returns None, data_time is None."""
+        from unittest.mock import MagicMock
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        mock_fetch_with_time.return_value = None
+        mock_daily.return_value = [78.0, 79.0, 80.0, 81.0, 80.0, 79.5, 80.0]
+
+        from scoring.energy_geo import score_energy_geo
+        score_energy_geo("fake://db", self.ENERGY_GEO_CONFIG)
+
+        mock_write.assert_called_once()
+        call_kwargs = mock_write.call_args
+        assert call_kwargs[1].get("data_time") is None

@@ -5,13 +5,14 @@ Reads inputs from TimescaleDB and writes the result back as SCORE_CONTAGION.
 """
 
 import logging
+from datetime import datetime
 from typing import Any
 
 import psycopg2
 
 from scoring.common import (
     compute_composite_score,
-    fetch_latest_value,
+    fetch_latest_with_time,
     linear_score,
     write_score,
 )
@@ -81,7 +82,12 @@ def score_contagion_from_values(
     return compute_composite_score(sub_scores, ct_config)
 
 
-def score_contagion(db_url: str, config: dict[str, Any], ticker_prefix: str = "") -> float | None:
+def score_contagion(
+    db_url: str,
+    config: dict[str, Any],
+    ticker_prefix: str = "",
+    staleness_hours: float = 2,
+) -> float | None:
     """Compute Cross-Domain Contagion score and write it to TimescaleDB.
 
     Reads pairwise correlations and VIX from the time_series table,
@@ -94,23 +100,36 @@ def score_contagion(db_url: str, config: dict[str, Any], ticker_prefix: str = ""
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
         ticker_prefix: Prepended to the output ticker name (default: "").
+        staleness_hours: Maximum age of source data in hours (default: 2).
 
     Returns:
         The computed score (0-100), or None if no data is available.
     """
+    timestamps: list[datetime] = []
+
     conn = psycopg2.connect(db_url)
     try:
         # Fetch pairwise correlations
         corr_values: dict[str, float | None] = {}
         for ticker in CORRELATION_TICKERS:
-            corr_values[ticker] = fetch_latest_value(conn, ticker, max_age_hours=2)
+            result = fetch_latest_with_time(conn, ticker, max_age_hours=staleness_hours)
+            if result is not None:
+                corr_values[ticker] = result[0]
+                timestamps.append(result[1])
+            else:
+                corr_values[ticker] = None
 
         max_corr = select_max_pairwise_correlation(corr_values)
 
         # Fetch VIX (via VIXY ETF proxy)
         ct_config = config.get("scoring", {}).get("contagion", {})
         vix_ticker = ct_config.get("components", {}).get("vix_level", {}).get("ticker", "VIXY")
-        vix_value = fetch_latest_value(conn, vix_ticker, max_age_hours=2)
+        result = fetch_latest_with_time(conn, vix_ticker, max_age_hours=staleness_hours)
+        if result is not None:
+            vix_value, vix_time = result
+            timestamps.append(vix_time)
+        else:
+            vix_value = None
 
         score = score_contagion_from_values(max_corr, vix_value, config)
 
@@ -118,7 +137,8 @@ def score_contagion(db_url: str, config: dict[str, Any], ticker_prefix: str = ""
             logger.warning("Contagion: no input data available, skipping score write")
             return None
 
-        write_score(conn, f"{ticker_prefix}SCORE_CONTAGION", score)
+        data_time = min(timestamps) if timestamps else None
+        write_score(conn, f"{ticker_prefix}SCORE_CONTAGION", score, data_time=data_time)
     finally:
         conn.close()
 

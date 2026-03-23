@@ -13,7 +13,7 @@ import psycopg2
 
 from scoring.common import (
     compute_composite_score,
-    fetch_latest_value,
+    fetch_latest_with_time,
     inverted_linear_score,
     linear_score,
     write_score,
@@ -40,7 +40,12 @@ def _fetch_value_days_ago(
     return row[0] if row else None
 
 
-def score_private_credit(db_url: str, config: dict[str, Any], ticker_prefix: str = "") -> float | None:
+def score_private_credit(
+    db_url: str,
+    config: dict[str, Any],
+    ticker_prefix: str = "",
+    staleness_hours: float = 2,
+) -> float | None:
     """Compute Private Credit Stress score and write it to TimescaleDB.
 
     Reads current market data from the time_series table, computes 4
@@ -52,6 +57,7 @@ def score_private_credit(db_url: str, config: dict[str, Any], ticker_prefix: str
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
         ticker_prefix: Prepended to the output ticker name (default: "").
+        staleness_hours: Maximum age of source data in hours (default: 2).
 
     Returns:
         The computed score (0-100).
@@ -59,21 +65,28 @@ def score_private_credit(db_url: str, config: dict[str, Any], ticker_prefix: str
     pc_config = config.get("scoring", {}).get("private_credit", {})
     components = pc_config.get("components", {})
     sub_scores: dict[str, float] = {}
+    timestamps: list[datetime] = []
 
     conn = psycopg2.connect(db_url)
     try:
         # HY Spread level
         hy_config = components.get("hy_spread", {})
-        hy_value = fetch_latest_value(conn, hy_config.get("ticker", "BAMLH0A0HYM2"), max_age_hours=2)
-        if hy_value is not None:
+        hy_result = fetch_latest_with_time(conn, hy_config.get("ticker", "BAMLH0A0HYM2"), max_age_hours=staleness_hours)
+        if hy_result is not None:
+            hy_value, hy_time = hy_result
+            timestamps.append(hy_time)
             sub_scores["hy_spread"] = linear_score(
                 hy_value, hy_config.get("min_value", 300), hy_config.get("max_value", 800),
             )
+        else:
+            hy_value = None
 
         # BDC NAV discount (inverted scale)
         bdc_config = components.get("bdc_discount", {})
-        bdc_value = fetch_latest_value(conn, bdc_config.get("ticker", "BDC_AVG_NAV_DISCOUNT"), max_age_hours=2)
-        if bdc_value is not None:
+        bdc_result = fetch_latest_with_time(conn, bdc_config.get("ticker", "BDC_AVG_NAV_DISCOUNT"), max_age_hours=staleness_hours)
+        if bdc_result is not None:
+            bdc_value, bdc_time = bdc_result
+            timestamps.append(bdc_time)
             sub_scores["bdc_discount"] = inverted_linear_score(
                 bdc_value, bdc_config.get("min_value", 0), bdc_config.get("max_value", -0.20),
             )
@@ -99,7 +112,8 @@ def score_private_credit(db_url: str, config: dict[str, Any], ticker_prefix: str
             logger.warning("Private Credit: no input data available, skipping score write")
             return None
 
-        write_score(conn, f"{ticker_prefix}SCORE_PRIVATE_CREDIT", score)
+        data_time = min(timestamps) if timestamps else None
+        write_score(conn, f"{ticker_prefix}SCORE_PRIVATE_CREDIT", score, data_time=data_time)
     finally:
         conn.close()
 

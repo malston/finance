@@ -14,7 +14,7 @@ import psycopg2
 
 from scoring.common import (
     compute_composite_score,
-    fetch_latest_value,
+    fetch_latest_with_time,
     inverted_linear_score,
     linear_score,
     write_score,
@@ -131,7 +131,12 @@ def score_energy_geo_from_values(
     return compute_composite_score(sub_scores, eg_config)
 
 
-def score_energy_geo(db_url: str, config: dict[str, Any], ticker_prefix: str = "") -> float | None:
+def score_energy_geo(
+    db_url: str,
+    config: dict[str, Any],
+    ticker_prefix: str = "",
+    staleness_hours: float = 2,
+) -> float | None:
     """Compute Energy/Geopolitical score and write it to TimescaleDB.
 
     Reads crude oil prices and EWT from the time_series table, computes 3
@@ -144,6 +149,7 @@ def score_energy_geo(db_url: str, config: dict[str, Any], ticker_prefix: str = "
         db_url: PostgreSQL/TimescaleDB connection string.
         config: Full scoring config dict (with top-level 'scoring' key).
         ticker_prefix: Prepended to the output ticker name (default: "").
+        staleness_hours: Maximum age in hours for source data (default: 2).
 
     Returns:
         The computed score (0-100), or None if insufficient data is available
@@ -152,11 +158,18 @@ def score_energy_geo(db_url: str, config: dict[str, Any], ticker_prefix: str = "
     eg_config = config.get("scoring", {}).get("energy_geo", {})
     components = eg_config.get("components", {})
 
+    timestamps: list[datetime] = []
+
     conn = psycopg2.connect(db_url)
     try:
         # Crude oil level
         crude_ticker = components.get("crude_level", {}).get("ticker", "CL=F")
-        crude_value = fetch_latest_value(conn, crude_ticker, max_age_hours=2)
+        result = fetch_latest_with_time(conn, crude_ticker, max_age_hours=staleness_hours)
+        if result is not None:
+            crude_value, crude_time = result
+            timestamps.append(crude_time)
+        else:
+            crude_value = None
 
         # Crude volatility (rolling std dev of daily returns)
         cv_cfg = components.get("crude_volatility", {})
@@ -190,7 +203,8 @@ def score_energy_geo(db_url: str, config: dict[str, Any], ticker_prefix: str = "
             logger.warning("Energy/Geo: no input data available, skipping score write")
             return None
 
-        write_score(conn, f"{ticker_prefix}SCORE_ENERGY_GEO", score)
+        data_time = min(timestamps) if timestamps else None
+        write_score(conn, f"{ticker_prefix}SCORE_ENERGY_GEO", score, data_time=data_time)
     finally:
         conn.close()
 

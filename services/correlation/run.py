@@ -8,6 +8,7 @@ import os
 import signal
 import sys
 import threading
+from datetime import datetime, timezone
 from typing import Any, Callable
 
 import psycopg2
@@ -17,7 +18,7 @@ from alerting.rules_engine import evaluate_rules, load_alert_config
 from correlator import compute_correlations
 from index_builder import compute_domain_indices
 from scoring.ai_concentration import score_ai_concentration
-from scoring.common import load_scoring_config
+from scoring.common import get_staleness_hours, is_market_hours, load_scoring_config, validate_staleness_config
 from scoring.composite import score_composite
 from scoring.contagion import score_contagion
 from scoring.energy_geo import score_energy_geo
@@ -51,6 +52,7 @@ def _run_scoring_pass(
     config: dict[str, Any],
     label: str,
     ticker_prefix: str = "",
+    staleness_hours: float = 2,
 ) -> None:
     """Run all 5 scorers with the given config and ticker prefix.
 
@@ -59,7 +61,7 @@ def _run_scoring_pass(
     """
     for scorer_fn, name in _SCORERS:
         try:
-            score = scorer_fn(db_url, config, ticker_prefix=ticker_prefix)
+            score = scorer_fn(db_url, config, ticker_prefix=ticker_prefix, staleness_hours=staleness_hours)
             if score is not None:
                 logger.info("%s %s score: %.2f", label, name.lower(), score)
             else:
@@ -79,10 +81,12 @@ def main() -> None:
 
     interval = int(os.environ.get("COMPUTE_INTERVAL_SECONDS", "300"))
     scoring_config = load_scoring_config()
+    validate_staleness_config(scoring_config)
 
     yardeni_config_path = os.path.join(os.path.dirname(__file__), "scoring_config_yardeni.yaml")
     try:
         yardeni_config: dict[str, Any] | None = load_scoring_config(yardeni_config_path)
+        validate_staleness_config(yardeni_config)
     except Exception:
         logger.exception(
             "Failed to load Yardeni scoring config from %s; Yardeni scoring disabled",
@@ -108,10 +112,25 @@ def main() -> None:
         except Exception:
             logger.exception("Correlation computation failed")
 
-        _run_scoring_pass(db_url, scoring_config, "Bookstaber")
+        now = datetime.now(timezone.utc)
+        staleness_hours = get_staleness_hours(scoring_config, now=now)
+        market_open = is_market_hours(scoring_config, now=now)
+        logger.info(
+            "Staleness policy: %sh (%s)",
+            staleness_hours,
+            "market hours" if market_open else "off-hours",
+        )
+
+        _run_scoring_pass(db_url, scoring_config, "Bookstaber", staleness_hours=staleness_hours)
 
         if yardeni_config is not None:
-            _run_scoring_pass(db_url, yardeni_config, "Yardeni", ticker_prefix="YARDENI_")
+            yardeni_staleness_hours = get_staleness_hours(yardeni_config, now=now)
+            _run_scoring_pass(db_url, yardeni_config, "Yardeni", ticker_prefix="YARDENI_", staleness_hours=yardeni_staleness_hours)
+
+        if not market_open:
+            logger.info("Off-hours: skipping alert evaluation")
+            shutdown_event.wait(timeout=interval)
+            continue
 
         try:
             fired = evaluate_rules(db_url, alert_config)

@@ -2,8 +2,12 @@
 
 Tests cover: SPY/RSP deviation scoring, SMH relative performance scoring,
 top-10 weight placeholder scoring, composite scoring with renormalization,
-clamping at 0 and 100, missing data handling.
+clamping at 0 and 100, missing data handling, staleness_hours forwarding,
+and data_time tracking.
 """
+
+from datetime import datetime, timezone
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -152,8 +156,6 @@ class TestAiConcentrationComposite:
             "top10_weight": 50.0,
         }
         score = compute_composite_score(sub_scores, config)
-        # Remaining weights: 0.30 + 0.30 = 0.60
-        # (50*0.30 + 50*0.30) / 0.60 = 30/0.60 = 50
         assert score == 50.0
 
     def test_missing_smh_renormalizes(self):
@@ -163,8 +165,6 @@ class TestAiConcentrationComposite:
             "top10_weight": 0.0,
         }
         score = compute_composite_score(sub_scores, config)
-        # Weights: 0.40 + 0.30 = 0.70
-        # (100*0.40 + 0*0.30) / 0.70 = 40/0.70 = 57.14
         assert score == pytest.approx(57.14, abs=0.01)
 
     def test_no_components_returns_none(self):
@@ -181,7 +181,6 @@ class TestAiConcentrationComposite:
             "top10_weight": 60.0,
         }
         score = compute_composite_score(sub_scores, config)
-        # 80*0.40 + 20*0.30 + 60*0.30 = 32 + 6 + 18 = 56
         assert score == 56.0
 
 
@@ -190,28 +189,16 @@ class TestScoreAiConcentrationFromValues:
 
     def test_all_at_midpoint(self):
         from scoring.ai_concentration import score_ai_concentration_from_values
-
         result = score_ai_concentration_from_values(
-            spy_rsp_ratio=1.075,  # deviation = 0.075 from 1.0 => 50% of 0.15
-            smh_value=110.0,
-            spy_value=100.0,  # relative = 0.10 => 50% of 0.20
+            spy_rsp_ratio=1.075, smh_value=110.0, spy_value=100.0,
             config=AI_CONCENTRATION_CONFIG,
         )
-        # spy_rsp_deviation: linear_score(0.075, 0, 0.15) = 50
-        # smh_relative: linear_score(0.10, 0, 0.20) = 50
-        # top10_weight: linear_score(1.075, 1.5, 2.5) = 0 (below min)
-        # Actually top10_weight uses the SPY_RSP_RATIO value directly
-        # linear_score(1.075, 1.5, 2.5) = 0 (below min, clamped)
-        # Composite: (50*0.40 + 50*0.30 + 0*0.30) / 1.0 = 35
         assert result == pytest.approx(35.0, abs=0.5)
 
     def test_all_none_returns_none(self):
         from scoring.ai_concentration import score_ai_concentration_from_values
-
         result = score_ai_concentration_from_values(
-            spy_rsp_ratio=None,
-            smh_value=None,
-            spy_value=None,
+            spy_rsp_ratio=None, smh_value=None, spy_value=None,
             config=AI_CONCENTRATION_CONFIG,
         )
         assert result is None
@@ -219,68 +206,137 @@ class TestScoreAiConcentrationFromValues:
     def test_spy_value_zero_excludes_smh_relative(self):
         """When spy_value is 0, smh_relative is excluded (division guard)."""
         from scoring.ai_concentration import score_ai_concentration_from_values
-
         result = score_ai_concentration_from_values(
-            spy_rsp_ratio=1.075,
-            smh_value=110.0,
-            spy_value=0,
+            spy_rsp_ratio=1.075, smh_value=110.0, spy_value=0,
             config=AI_CONCENTRATION_CONFIG,
         )
-        # spy_rsp_deviation: linear_score(0.075, 0, 0.15) = 50
-        # smh_relative: excluded (spy_value == 0)
-        # top10_weight: linear_score(1.075, 1.5, 2.5) = 0 (below min)
-        # Weights: 0.40 + 0.30 = 0.70
-        # Score: (50*0.40 + 0*0.30) / 0.70 = 20/0.70 = 28.57
         assert result == pytest.approx(28.57, abs=0.01)
 
     def test_missing_smh_renormalizes(self):
         from scoring.ai_concentration import score_ai_concentration_from_values
-
         result = score_ai_concentration_from_values(
-            spy_rsp_ratio=1.075,
-            smh_value=None,
-            spy_value=100.0,
+            spy_rsp_ratio=1.075, smh_value=None, spy_value=100.0,
             config=AI_CONCENTRATION_CONFIG,
         )
-        # spy_rsp_deviation: 50, top10_weight: 0 (1.075 < 1.5)
-        # Weights: 0.40 + 0.30 = 0.70
-        # Score: (50*0.40 + 0*0.30) / 0.70 = 20/0.70 = 28.57
         assert result == pytest.approx(28.57, abs=0.01)
 
     def test_high_concentration(self):
         from scoring.ai_concentration import score_ai_concentration_from_values
-
         result = score_ai_concentration_from_values(
-            spy_rsp_ratio=2.5,  # deviation = 1.5 >> 0.15 => clamped 100
-            smh_value=120.0,
-            spy_value=100.0,  # relative = 0.20 => 100
+            spy_rsp_ratio=2.5, smh_value=120.0, spy_value=100.0,
             config=AI_CONCENTRATION_CONFIG,
         )
-        # spy_rsp_deviation: 100, smh_relative: 100, top10_weight: linear_score(2.5, 1.5, 2.5) = 100
         assert result == pytest.approx(100.0)
 
     def test_low_concentration(self):
         from scoring.ai_concentration import score_ai_concentration_from_values
-
         result = score_ai_concentration_from_values(
-            spy_rsp_ratio=1.0,  # deviation = 0 => 0
-            smh_value=100.0,
-            spy_value=100.0,  # relative = 0 => 0
+            spy_rsp_ratio=1.0, smh_value=100.0, spy_value=100.0,
             config=AI_CONCENTRATION_CONFIG,
         )
-        # spy_rsp_deviation: 0, smh_relative: 0, top10_weight: linear_score(1.0, 1.5, 2.5) = 0
         assert result == pytest.approx(0.0)
 
     def test_missing_spy_value_excludes_smh_relative(self):
         from scoring.ai_concentration import score_ai_concentration_from_values
-
         result = score_ai_concentration_from_values(
-            spy_rsp_ratio=1.15,  # deviation = 0.15 => 100
-            smh_value=110.0,
-            spy_value=None,  # can't compute relative
+            spy_rsp_ratio=1.15, smh_value=110.0, spy_value=None,
             config=AI_CONCENTRATION_CONFIG,
         )
-        # spy_rsp_deviation: 100, top10_weight: linear_score(1.15, 1.5, 2.5) = 0
-        # Weights: 0.40 + 0.30 = 0.70
-        # Score: (100*0.40 + 0*0.30) / 0.70 = 40/0.70 = 57.14
         assert result == pytest.approx(57.14, abs=0.01)
+
+
+class TestScoreAiConcentrationStaleness:
+    """Tests for staleness_hours parameter and data_time tracking."""
+
+    @patch("scoring.ai_concentration.psycopg2.connect")
+    @patch("scoring.ai_concentration.write_score")
+    @patch("scoring.ai_concentration.fetch_latest_with_time")
+    def test_staleness_hours_defaults_to_2(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """fetch_latest_with_time is called with max_age_hours=2 by default."""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        t = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.return_value = (1.8, t)
+
+        from scoring.ai_concentration import score_ai_concentration
+        score_ai_concentration("fake_db_url", AI_CONCENTRATION_CONFIG)
+
+        for c in mock_fetch_with_time.call_args_list:
+            assert c.kwargs["max_age_hours"] == 2
+
+    @patch("scoring.ai_concentration.psycopg2.connect")
+    @patch("scoring.ai_concentration.write_score")
+    @patch("scoring.ai_concentration.fetch_latest_with_time")
+    def test_staleness_hours_48_forwarded(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """fetch_latest_with_time is called with max_age_hours=48 when specified."""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        t = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.return_value = (1.8, t)
+
+        from scoring.ai_concentration import score_ai_concentration
+        score_ai_concentration("fake_db_url", AI_CONCENTRATION_CONFIG, staleness_hours=48)
+
+        for c in mock_fetch_with_time.call_args_list:
+            assert c.kwargs["max_age_hours"] == 48
+
+    @patch("scoring.ai_concentration.psycopg2.connect")
+    @patch("scoring.ai_concentration.write_score")
+    @patch("scoring.ai_concentration.fetch_latest_with_time")
+    def test_data_time_is_min_of_source_timestamps(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """data_time passed to write_score is the minimum of all source timestamps."""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+
+        t1 = datetime(2026, 3, 22, 10, 0, tzinfo=timezone.utc)
+        t2 = datetime(2026, 3, 22, 11, 0, tzinfo=timezone.utc)
+        t3 = datetime(2026, 3, 22, 9, 30, tzinfo=timezone.utc)
+        mock_fetch_with_time.side_effect = [(1.8, t1), (250.0, t2), (500.0, t3)]
+
+        from scoring.ai_concentration import score_ai_concentration
+        score_ai_concentration("fake_db_url", AI_CONCENTRATION_CONFIG)
+
+        mock_write.assert_called_once()
+        assert mock_write.call_args.kwargs["data_time"] == t3
+
+    @patch("scoring.ai_concentration.psycopg2.connect")
+    @patch("scoring.ai_concentration.write_score")
+    @patch("scoring.ai_concentration.fetch_latest_with_time")
+    def test_data_time_when_only_some_fetches_succeed(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """When only 1 of 3 fetches returns data, data_time is that single timestamp."""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+
+        t1 = datetime(2026, 3, 22, 14, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.side_effect = [(1.8, t1), None, None]
+
+        from scoring.ai_concentration import score_ai_concentration
+        score_ai_concentration("fake_db_url", AI_CONCENTRATION_CONFIG)
+
+        mock_write.assert_called_once()
+        assert mock_write.call_args.kwargs["data_time"] == t1
+
+    @patch("scoring.ai_concentration.psycopg2.connect")
+    @patch("scoring.ai_concentration.write_score")
+    @patch("scoring.ai_concentration.fetch_latest_with_time")
+    def test_no_write_when_all_fetches_return_none(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """When all fetches return None, score is None and write_score is not called."""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        mock_fetch_with_time.return_value = None
+
+        from scoring.ai_concentration import score_ai_concentration
+        result = score_ai_concentration("fake_db_url", AI_CONCENTRATION_CONFIG)
+
+        assert result is None
+        mock_write.assert_not_called()

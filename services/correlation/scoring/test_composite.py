@@ -2,14 +2,19 @@
 
 Tests cover: weighted average with all four domain scores, missing score
 renormalization, threat level mapping, boundary conditions at level thresholds,
-and edge cases (all missing, single score available).
+edge cases (all missing, single score available), staleness_hours forwarding,
+and data_time tracking from domain score timestamps.
 """
+
+from datetime import datetime, timezone
+from unittest.mock import patch, MagicMock, call
 
 import pytest
 
 from scoring.composite import (
     compute_composite_from_values,
     get_threat_level,
+    score_composite,
 )
 
 
@@ -210,3 +215,87 @@ class TestGetThreatLevel:
         level, color = get_threat_level(64, COMPOSITE_CONFIG)
         assert level == "HIGH"
         assert color == "#f97316"
+
+
+class TestScoreCompositeStaleness:
+    """Test staleness_hours forwarding and data_time tracking."""
+
+    @patch("scoring.composite.psycopg2.connect")
+    @patch("scoring.composite.write_score")
+    @patch("scoring.composite.fetch_latest_with_time")
+    def test_staleness_hours_defaults_to_2(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """fetch_latest_with_time is called with max_age_hours=2 by default."""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        ts = datetime(2026, 3, 21, 16, 0, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.side_effect = [
+            (60.0, ts), (50.0, ts), (70.0, ts), (55.0, ts),
+        ]
+
+        score_composite("fake_db_url", COMPOSITE_CONFIG)
+
+        for c in mock_fetch_with_time.call_args_list:
+            assert c[1].get("max_age_hours") == 2 or c[0][2] == 2
+
+    @patch("scoring.composite.psycopg2.connect")
+    @patch("scoring.composite.write_score")
+    @patch("scoring.composite.fetch_latest_with_time")
+    def test_staleness_hours_48_forwarded(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """staleness_hours=48 is forwarded as max_age_hours to all fetches."""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        ts = datetime(2026, 3, 21, 16, 0, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.side_effect = [
+            (60.0, ts), (50.0, ts), (70.0, ts), (55.0, ts),
+        ]
+
+        score_composite("fake_db_url", COMPOSITE_CONFIG, staleness_hours=48)
+
+        for c in mock_fetch_with_time.call_args_list:
+            assert c[1].get("max_age_hours") == 48 or c[0][2] == 48
+
+    @patch("scoring.composite.psycopg2.connect")
+    @patch("scoring.composite.write_score")
+    @patch("scoring.composite.fetch_latest_with_time")
+    def test_data_time_is_min_of_domain_timestamps(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """data_time passed to write_score is the min of all domain timestamps."""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        ts1 = datetime(2026, 3, 21, 10, 0, 0, tzinfo=timezone.utc)
+        ts2 = datetime(2026, 3, 21, 12, 0, 0, tzinfo=timezone.utc)
+        ts3 = datetime(2026, 3, 21, 8, 0, 0, tzinfo=timezone.utc)  # oldest
+        ts4 = datetime(2026, 3, 21, 14, 0, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.side_effect = [
+            (60.0, ts1), (50.0, ts2), (70.0, ts3), (55.0, ts4),
+        ]
+
+        score_composite("fake_db_url", COMPOSITE_CONFIG)
+
+        mock_write.assert_called_once()
+        assert mock_write.call_args[1]["data_time"] == ts3
+
+    @patch("scoring.composite.psycopg2.connect")
+    @patch("scoring.composite.write_score")
+    @patch("scoring.composite.fetch_latest_with_time")
+    def test_data_time_when_some_domains_unavailable(
+        self, mock_fetch_with_time, mock_write, mock_connect,
+    ):
+        """When 2 of 4 domains return None, data_time is min of the 2 available."""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        ts1 = datetime(2026, 3, 21, 10, 0, 0, tzinfo=timezone.utc)
+        ts2 = datetime(2026, 3, 21, 14, 0, 0, tzinfo=timezone.utc)
+        mock_fetch_with_time.side_effect = [
+            (60.0, ts1), None, (70.0, ts2), None,
+        ]
+
+        score_composite("fake_db_url", COMPOSITE_CONFIG)
+
+        mock_write.assert_called_once()
+        assert mock_write.call_args[1]["data_time"] == ts1
