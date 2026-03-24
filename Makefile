@@ -50,7 +50,7 @@ py-test: ## Run Python unit tests only
 	cd services/correlation && . .venv/bin/activate && \
 		python -m pytest -v -k "not integration and not e2e"
 
-py-test-all: ## Run full Python test suite (requires DATABASE_URL)
+py-test-all: ## Run full Python test suite (E2E tests require Docker)
 	cd services/correlation && . .venv/bin/activate && \
 		python -m pytest -v
 
