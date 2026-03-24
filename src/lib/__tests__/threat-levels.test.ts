@@ -99,4 +99,38 @@ describe("getThreatLevel", () => {
       expect(getThreatLevel(81, "yardeni").color).toBe("#ef4444");
     });
   });
+
+  describe("input validation", () => {
+    it("warns and clamps negative scores", () => {
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const result = getThreatLevel(-5);
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining("-5"));
+      expect(result.level).toBe("LOW");
+      spy.mockRestore();
+    });
+
+    it("warns and clamps scores above 100", () => {
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const result = getThreatLevel(150);
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining("150"));
+      expect(result.level).toBe("CRITICAL");
+      spy.mockRestore();
+    });
+
+    it("warns and returns CRITICAL for NaN", () => {
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const result = getThreatLevel(NaN);
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining("NaN"));
+      expect(result.level).toBe("CRITICAL");
+      spy.mockRestore();
+    });
+
+    it("warns and returns CRITICAL for Infinity", () => {
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const result = getThreatLevel(Infinity);
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining("Infinity"));
+      expect(result.level).toBe("CRITICAL");
+      spy.mockRestore();
+    });
+  });
 });

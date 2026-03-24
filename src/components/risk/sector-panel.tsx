@@ -184,7 +184,12 @@ export function SectorPanel({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <ThreatGauge score={score} color={scoreColor} size={90} />
+          <ThreatGauge
+            score={score}
+            color={scoreColor}
+            size={90}
+            framework={framework}
+          />
           <div
             data-testid="sector-panel-collapse-arrow"
             style={{ color: C.textMuted }}
