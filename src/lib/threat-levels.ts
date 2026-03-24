@@ -20,6 +20,9 @@ export function getThreatLevel(
   score: number,
   framework: Framework = "bookstaber",
 ): ThreatLevel {
+  if (!Number.isFinite(score) || score < 0 || score > 100) {
+    console.warn(`getThreatLevel: out-of-range score: ${score}`);
+  }
   const thresholds = FRAMEWORK_CONFIG[framework].threatLevels;
   for (const threshold of thresholds) {
     if (score <= threshold.max) {

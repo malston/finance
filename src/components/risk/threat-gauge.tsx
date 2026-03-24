@@ -6,7 +6,7 @@ interface ThreatGaugeProps {
   score: number | null;
   color: string;
   size?: number;
-  framework?: Framework;
+  framework: Framework;
 }
 
 /**
