@@ -14,7 +14,7 @@ The dashboard doesn't tell you which one is right. It shows you what each framew
 
 ## Architecture
 
-![Architecture diagram](docs/bookstaber_monitor_architecture.svg)
+![Architecture diagram](docs/architecture.svg)
 
 Three independent services communicate via a shared TimescaleDB instance:
 
