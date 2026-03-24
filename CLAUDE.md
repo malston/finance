@@ -96,7 +96,7 @@ cd services/correlation
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python -m pytest -v -k "not integration and not e2e"  # Unit tests only
-python -m pytest -v                                                # Full suite (E2E tests require Docker)
+python -m pytest -v                                                # Full suite (E2E requires Docker; integration requires DATABASE_URL)
 ```
 
 ### Docker
