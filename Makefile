@@ -3,7 +3,7 @@
        py-setup py-test py-test-all \
        e2e e2e-go e2e-bash \
        docker-up docker-up-backend docker-down \
-       backfill
+       backfill test-all check
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -67,13 +67,13 @@ e2e-bash: ## Run bash E2E scripts (tests/)
 
 # --- Docker ---
 
-docker-up: ## Start full stack (4 services)
+docker-up: ## Build and start full stack (4 services)
 	docker compose up -d --build
 
-docker-up-backend: ## Start backend only (db, ingestion, correlation)
+docker-up-backend: ## Build and start backend only (db, ingestion, correlation)
 	docker compose up -d --build timescaledb ingestion correlation
 
-docker-down: ## Stop and clean up containers
+docker-down: ## Tear down stack (removes volumes -- destroys DB data)
 	docker compose down -v --remove-orphans
 
 # --- Data ---
@@ -85,4 +85,4 @@ backfill: ## Backfill historical data (requires FRED_API_KEY)
 
 test-all: test go-test py-test ## Run all unit tests (TS + Go + Python)
 
-check: lint go-vet test go-test py-test ## Lint and test everything
+check: lint go-vet test go-test py-test ## Lint + all unit tests (TS, Go, Python)
