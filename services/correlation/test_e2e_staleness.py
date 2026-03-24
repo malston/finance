@@ -150,7 +150,7 @@ def seed_market_data(db_conn, data_timestamp):
     Also seeds 30+ days of historical data for rate-of-change and volatility
     calculations that require lookback windows.
     """
-    # Primary data point at data_timestamp (the "Friday close")
+    # Primary data point at data_timestamp
     primary_data = {
         "BAMLH0A0HYM2": 450.0,       # HY spread: mid-range -> non-zero score
         "BDC_AVG_NAV_DISCOUNT": -0.10, # 10% discount -> mid-range score
