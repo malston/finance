@@ -1,26 +1,72 @@
-# Interpreting the Bookstaber Risk Monitor Dashboard
+# Interpreting the Risk Monitor Dashboard
 
-## 1. The Thesis
+## 1. Two Frameworks, One Dashboard
 
-In March 2026, risk researcher Richard Bookstaber published an analysis arguing that
-the major threats to financial stability are not isolated -- they are deeply
-interconnected. Private credit markets, the concentration of the stock market in a
-handful of giant tech companies, energy price shocks driven by geopolitical conflict,
-and the feedback loops that tie all of these together form a web of risk. A crisis in
-any one of these areas can cascade into the others through forced selling, margin
-calls, and investor panic.
+This dashboard monitors four interconnected risk domains -- Private Credit, AI/Tech
+Concentration, Energy & Geopolitical, and Cross-Domain Contagion -- and measures how
+correlated they are with each other over time. What makes it distinctive is that it
+applies two competing interpretive frameworks to the same underlying data, letting
+you see how different risk philosophies reach different conclusions from identical
+market signals.
 
-This dashboard monitors those four risk domains and, critically, measures how
-correlated they are with each other over time. In normal markets, private credit,
-big tech stocks, and energy prices move somewhat independently. When they start moving
-in lockstep -- when the rolling correlations between them spike -- it signals that
-stress is propagating across markets. Bookstaber calls this "contagion": a shock
-in one domain is forcing selling in others, creating a self-reinforcing spiral.
+A toggle in the dashboard header switches between frameworks. The raw data, tickers,
+and correlation calculations are identical in both views. What changes is the scoring
+weights, threat level bands, and the interpretive lens applied to the numbers.
 
-The goal of this tool is to give you an early warning when that contagion is building.
-It is not a trading signal or financial advice. It is a monitoring system that helps
-you stay aware of systemic risk conditions so you can make informed decisions about
-your own portfolio.
+### 1.1 Bookstaber: Systemic Risk
+
+Richard Bookstaber is a risk researcher who published an analysis in March 2026
+arguing that private credit, AI concentration, energy/geopolitical shocks, and
+cross-domain contagion are interconnected risks that could cascade through the
+financial system. His core thesis: shocks propagate through a tightly coupled
+structure faster than they can be contained.
+
+In the Bookstaber framework, when rolling correlations between normally-independent
+domains spike, it signals that forced selling in one domain is propagating into
+others -- a self-reinforcing spiral he calls "contagion." The Bookstaber lens treats
+elevated signals as warnings of systemic fragility requiring defensive action.
+
+**Key characteristics:**
+
+- Higher weight on Private Credit (0.30) -- credit markets are where cracks appear first
+- Lower contagion threshold (correlation > 0.5) -- correlation spikes are danger signals
+- Tighter threat bands: LOW 0-25, ELEVATED 26-50, HIGH 51-75, CRITICAL 76-100
+- Interprets correlation spikes as evidence of cascading forced selling
+
+### 1.2 Yardeni: Resilience
+
+Ed Yardeni is a veteran Wall Street strategist known for a resilience-oriented view
+of markets. Where Bookstaber sees fragility and contagion, Yardeni sees self-correcting
+mechanisms: distressed funds stepping in as buyers, sector rotation absorbing shocks,
+and the U.S. economy's structural capacity to absorb elevated readings.
+
+In the Yardeni framework, the same correlation spike that Bookstaber reads as
+"cascading forced selling" gets interpreted as "sector rotation in progress --
+distressed buyers are circling, buying opportunity incoming." The Yardeni lens
+treats elevated signals as stress that the system has historically absorbed.
+
+**Key characteristics:**
+
+- Higher weight on Energy & Geopolitical (0.30) -- geopolitics matters but self-corrects
+- Higher contagion threshold (correlation > 0.85) -- only extreme correlation is alarming
+- Wider threat bands: LOW 0-30, ELEVATED 31-55, HIGH 56-80, CRITICAL 81-100
+- Interprets correlation spikes as transient dislocations that create opportunities
+
+### 1.3 Why Both Matter
+
+The hardest problem in risk monitoring is not getting the data right -- it is
+interpreting it. Having both frameworks side-by-side forces you to think critically
+about which regime the market is actually in rather than anchoring on one narrative.
+
+When both frameworks agree (both showing HIGH or both showing LOW), the signal is
+stronger. When they diverge -- Bookstaber at HIGH while Yardeni stays at ELEVATED --
+that divergence itself is information. It tells you the data is in a range where
+reasonable analysts disagree, and your own judgment about market conditions matters
+most.
+
+This tool is not a trading signal or financial advice. It is a monitoring system that
+helps you stay aware of systemic risk conditions so you can make informed decisions
+about your own portfolio.
 
 ---
 
@@ -33,19 +79,28 @@ combines all four risk domains into one figure. A score of 0 means every indicat
 is calm. A score of 100 means every indicator is at its most stressed level
 simultaneously.
 
-The composite score is a weighted average of the four domain scores:
+The composite score is a weighted average of the four domain scores. The weights
+differ by framework, reflecting each framework's view of where risk originates:
 
-| Domain                  | Weight |
-| ----------------------- | ------ |
-| Private Credit Stress   | 30%    |
-| AI / Tech Concentration | 20%    |
-| Energy & Geopolitical   | 25%    |
-| Cross-Domain Contagion  | 25%    |
+| Domain                  | Bookstaber | Yardeni |
+| ----------------------- | ---------- | ------- |
+| Private Credit Stress   | 30%        | 25%     |
+| AI / Tech Concentration | 20%        | 20%     |
+| Energy & Geopolitical   | 25%        | 30%     |
+| Cross-Domain Contagion  | 25%        | 25%     |
 
-Private Credit gets the highest weight because the private credit market is
-enormous, opaque, and has historically been where cracks appear first.
+Bookstaber weights Private Credit highest because the credit market is enormous,
+opaque, and historically where cracks appear first. Yardeni weights Energy &
+Geopolitical highest because geopolitical shocks have immediate economic transmission
+but also trigger self-correcting market mechanisms.
 
 ### Threat Level Bands
+
+The frameworks use different band widths. Yardeni's wider LOW and ELEVATED bands
+reflect the view that markets routinely absorb readings that Bookstaber would flag
+as concerning.
+
+**Bookstaber:**
 
 | Score  | Level    | Color  | What it means                                                                                                                                                                  |
 | ------ | -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -53,6 +108,15 @@ enormous, opaque, and has historically been where cracks appear first.
 | 26-50  | ELEVATED | Yellow | Some indicators are above normal. Worth paying attention but not alarming on its own.                                                                                          |
 | 51-75  | HIGH     | Orange | Multiple risk indicators are flashing warnings. Review your portfolio exposure. Consider whether you are comfortable with your current risk level.                             |
 | 76-100 | CRITICAL | Red    | Systemic stress is widespread. Correlations are likely elevated, meaning diversification may not protect you. This is the time to act on whatever risk plan you have in place. |
+
+**Yardeni:**
+
+| Score  | Level    | Color  | What it means                                                                                                                                                            |
+| ------ | -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0-30   | LOW      | Green  | Markets are functioning within normal parameters. Stress readings are within the range the economy has historically absorbed.                                            |
+| 31-55  | ELEVATED | Yellow | Some indicators are elevated but within historical norms for recoverable stress. Monitor for persistence rather than reacting to the level.                              |
+| 56-80  | HIGH     | Orange | Multiple indicators are stressed. The system has absorbed similar readings before, but the combination warrants attention. Review whether conditions are mean-reverting. |
+| 81-100 | CRITICAL | Red    | Extreme stress across domains. Even under the resilience view, this level of simultaneous stress exceeds what markets typically absorb without significant repricing.    |
 
 ### The Domain Badges
 
