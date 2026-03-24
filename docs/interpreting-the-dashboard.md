@@ -47,8 +47,8 @@ enormous, opaque, and has historically been where cracks appear first.
 
 ### Threat Level Bands
 
-| Score   | Level    | Color  | What it means                                                                                                                                                                  |
-| ------- | -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Score  | Level    | Color  | What it means                                                                                                                                                                  |
+| ------ | -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 0-25   | LOW      | Green  | Markets are functioning normally. Risk indicators are within historical norms. No action needed.                                                                               |
 | 26-50  | ELEVATED | Yellow | Some indicators are above normal. Worth paying attention but not alarming on its own.                                                                                          |
 | 51-75  | HIGH     | Orange | Multiple risk indicators are flashing warnings. Review your portfolio exposure. Consider whether you are comfortable with your current risk level.                             |
@@ -78,7 +78,7 @@ give us a window into how the private credit market is doing.
 
 When this domain's score rises, it means the cost of risky borrowing is going up,
 BDC investors are getting nervous, and/or the private credit market is showing signs
-of strain. Because private credit is a $1.7 trillion market with limited
+of strain. Because private credit is a roughly $2 trillion market with limited
 transparency, problems here can grow large before they become visible.
 
 #### Key indicators
@@ -511,3 +511,117 @@ a reference point, not a binary trigger.
 dashboard will display the last known data with freshness warnings. Scores based on
 stale data may not reflect current conditions. Always check the freshness indicators
 before acting on the dashboard's readings.
+
+---
+
+## 8. Expert Perspectives: Why These Domains Matter
+
+The four risk domains this dashboard monitors are not arbitrary groupings. They
+reflect concerns raised independently by multiple experienced market participants.
+This section captures key perspectives that provide context for interpreting domain
+scores.
+
+### 8.1 Private Credit: The $2 Trillion Blind Spot
+
+Steve Eisman -- the investment analyst who predicted and profited from the 2008
+subprime mortgage crisis (depicted in "The Big Short") -- identifies private credit
+as one of the two biggest long-term risks to the market.
+
+His core argument: almost all U.S. loan growth since the 2008 financial crisis has
+occurred outside the traditional banking system, in private credit. This market has
+grown to approximately $2 trillion, and it has never been tested by a credit cycle.
+The last significant credit downturn was 17 years ago.
+
+What makes this different from 2008 is the lack of data. Subprime mortgage
+securitizations reported their performance to Moody's and S&P every month -- analysts
+could track delinquency rates across every securitization in the country. Private
+credit, by definition, does not report publicly. Eisman's own assessment: "there are
+a couple of bad credits here and there and that's all I can say because I don't have
+any data."
+
+The risk is compounded by structural leverage. Over the past decade, private equity
+firms have acquired life insurance companies and directed those companies to invest
+in the PE firms' own loan paper. Some have then reinsured portions of those books
+through their own offshore reinsurers -- transactions that are opaque and appear to
+increase leverage in hidden ways. The result: private credit sitting in life
+insurance companies, controlled by private equity, with additional hidden leverage
+layered on top.
+
+Banks are better capitalized than at any point in recent history, so a private credit
+downturn would not replay 2008's near-collapse of the banking system. The primary
+casualties would be institutional investors and, more troublingly, individual
+policyholders at PE-owned life insurance companies.
+
+**What this means for the Private Credit domain:** A calm score does not mean absence
+of risk -- it may mean absence of visible stress in a market that is structurally
+opaque. When BDC discounts widen or HY spreads start moving, pay close attention to
+the _rate of change_ (the spread ROC sub-component), because the first visible signs
+of a credit cycle turning will likely appear as acceleration rather than level shifts.
+The 17-year absence of a credit cycle means current market participants have no
+muscle memory for what deterioration looks like in this asset class.
+
+### 8.2 AI Concentration: The Capex-to-Returns Question
+
+Eisman's second major concern is AI investment -- not that the technology lacks value,
+but that the returns may not justify the spending. Total AI infrastructure spend was
+approximately $450 billion in 2024. In 2025, just four companies (Amazon, Google,
+Meta, Microsoft) are spending $650 billion collectively.
+
+He draws a direct parallel to the internet bubble: the first generation of internet
+companies largely failed, and it was the second generation that delivered the
+internet's real value. A similar pattern in AI -- where current leaders fail to
+generate returns sufficient to justify their valuations, triggering a pullback and
+recession, before a stronger second wave emerges -- is one plausible scenario.
+
+Eisman is explicit that this is not an imminent risk ("we won't know for a year") and
+that he does not expect a sudden halt to AI spending. The risk is the gap between
+capital deployed and returns generated, which would manifest as earnings
+disappointments and valuation compression.
+
+He is also skeptical of the "AI destroys SaaS" narrative. Major SaaS companies
+(ServiceNow, Salesforce, Adobe) are reporting strong numbers with no evidence of AI
+disruption in their earnings. Their stocks are declining on narrative, not data --
+which he views as an opportunity, not a signal of fundamental weakness.
+
+**What this means for the AI/Tech Concentration domain:** The SPY/RSP ratio and
+semiconductor relative performance are leading indicators for the concentration
+thesis. But the real risk Eisman highlights is not measurable in daily price data --
+it is the long-term question of whether AI capex generates adequate ROI. A high
+concentration score means the market is increasingly dependent on AI spending
+continuing to grow, which makes it more vulnerable to even a modest deceleration.
+
+### 8.3 Markets Are Amoral: Interpreting Political and Geopolitical Noise
+
+Eisman offers a framework for filtering signal from noise: markets do not respond to
+political narratives, rule-of-law concerns, or geopolitical anxiety -- they respond
+to margins, revenue growth, and earnings per share growth. If political or
+geopolitical events impact those numbers, stocks move. If they don't, markets shrug.
+
+This has direct implications for reading this dashboard during geopolitical events.
+Energy domain spikes during conflicts (like oil price increases during Middle East
+tensions) tend to be short-lived unless they actually impair corporate earnings. The
+Contagion domain is the more reliable signal: if a geopolitical event is truly
+systemic, it will show up as rising cross-domain correlations, not just an isolated
+energy price spike.
+
+### 8.4 Paradigm Shifts and Misinterpreted Data
+
+Perhaps Eisman's most valuable insight for interpreting any monitoring system: the
+2008 crisis was not caused by hidden data. The data was public, reported monthly, and
+scrutinized by the entire fixed income industry. The problem was interpretation.
+Market participants whose careers depended on the existing paradigm -- that U.S.
+housing prices could not decline nationally -- systematically misread deteriorating
+data because accepting the alternative was professionally unthinkable.
+
+This applies directly to how you use this dashboard. When domain scores rise, the
+natural human response is to find reasons why the signals are wrong, especially if
+your portfolio is long the affected sectors. Eisman's experience suggests that when
+you find yourself arguing with the data, that is precisely the moment to take it most
+seriously.
+
+The corollary: predictions without supporting data are not actionable. End-of-the-world
+theses about fiat currency collapse, unsustainable deficits, or AI existential risk
+share a common trait -- they lack the kind of trackable, deteriorating data that
+preceded 2008. This dashboard is designed to surface exactly that kind of data. If a
+thesis cannot point to a measurable, worsening signal, it remains academic regardless
+of how compelling the narrative.
