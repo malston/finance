@@ -10,7 +10,7 @@ you see how different risk philosophies reach different conclusions from identic
 market signals.
 
 A toggle in the dashboard header switches between frameworks. The raw data, tickers,
-and correlation calculations are identical in both views. What changes is the scoring
+and correlation calculations are identical in both views. What changes are the scoring
 weights, threat level bands, and the interpretive lens applied to the numbers.
 
 ### 1.1 Bookstaber: Systemic Risk
@@ -534,7 +534,7 @@ you receive one:
 
 ## 7. Limitations and Caveats
 
-**This is a monitoring tool, not trading advice.** The Bookstaber Risk Monitor
+**This is a monitoring tool, not trading advice.** The Financial Risk Monitor
 provides information about systemic risk conditions. It does not tell you what to
 buy, sell, or hold. Your financial decisions should account for your personal
 situation, risk tolerance, and investment timeline.
