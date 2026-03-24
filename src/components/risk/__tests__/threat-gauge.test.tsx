@@ -96,4 +96,32 @@ describe("ThreatGauge", () => {
       container.querySelector("[data-testid='gauge-arc']"),
     ).not.toBeInTheDocument();
   });
+
+  describe("framework-aware labels", () => {
+    it("uses bookstaber bands by default", () => {
+      render(<ThreatGauge score={28} color="#eab308" />);
+      expect(screen.getByTestId("gauge-label")).toHaveTextContent("ELEVATED");
+    });
+
+    it("uses bookstaber bands when framework is bookstaber", () => {
+      render(<ThreatGauge score={28} color="#eab308" framework="bookstaber" />);
+      expect(screen.getByTestId("gauge-label")).toHaveTextContent("ELEVATED");
+    });
+
+    it("uses yardeni bands when framework is yardeni", () => {
+      render(<ThreatGauge score={28} color="#22c55e" framework="yardeni" />);
+      expect(screen.getByTestId("gauge-label")).toHaveTextContent("LOW");
+    });
+
+    it("score 76 is CRITICAL under bookstaber but HIGH under yardeni", () => {
+      const { unmount } = render(
+        <ThreatGauge score={76} color="#ef4444" framework="bookstaber" />,
+      );
+      expect(screen.getByTestId("gauge-label")).toHaveTextContent("CRITICAL");
+      unmount();
+
+      render(<ThreatGauge score={76} color="#f97316" framework="yardeni" />);
+      expect(screen.getByTestId("gauge-label")).toHaveTextContent("HIGH");
+    });
+  });
 });

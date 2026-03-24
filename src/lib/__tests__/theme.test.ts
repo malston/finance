@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { C, threatColor, threatLabel } from "@/lib/theme";
+import { C } from "@/lib/theme";
 
 describe("theme color constants", () => {
   it("exports all required color values with exact hex codes", () => {
@@ -31,53 +31,5 @@ describe("theme color constants", () => {
     for (const key of keys) {
       expect(typeof C[key as keyof typeof C]).toBe("string");
     }
-  });
-});
-
-describe("threatColor", () => {
-  it("returns green for levels 0-25", () => {
-    expect(threatColor(0)).toBe(C.green);
-    expect(threatColor(10)).toBe(C.green);
-    expect(threatColor(25)).toBe(C.green);
-  });
-
-  it("returns yellow for levels 26-50", () => {
-    expect(threatColor(26)).toBe(C.yellow);
-    expect(threatColor(35)).toBe(C.yellow);
-    expect(threatColor(50)).toBe(C.yellow);
-  });
-
-  it("returns orange for levels 51-75", () => {
-    expect(threatColor(51)).toBe(C.orange);
-    expect(threatColor(68)).toBe(C.orange);
-    expect(threatColor(75)).toBe(C.orange);
-  });
-
-  it("returns red for levels 76-100", () => {
-    expect(threatColor(76)).toBe(C.red);
-    expect(threatColor(90)).toBe(C.red);
-    expect(threatColor(100)).toBe(C.red);
-  });
-});
-
-describe("threatLabel", () => {
-  it("returns LOW for levels 0-25", () => {
-    expect(threatLabel(0)).toBe("LOW");
-    expect(threatLabel(25)).toBe("LOW");
-  });
-
-  it("returns ELEVATED for levels 26-50", () => {
-    expect(threatLabel(26)).toBe("ELEVATED");
-    expect(threatLabel(50)).toBe("ELEVATED");
-  });
-
-  it("returns HIGH for levels 51-75", () => {
-    expect(threatLabel(51)).toBe("HIGH");
-    expect(threatLabel(75)).toBe("HIGH");
-  });
-
-  it("returns CRITICAL for levels 76-100", () => {
-    expect(threatLabel(76)).toBe("CRITICAL");
-    expect(threatLabel(100)).toBe("CRITICAL");
   });
 });

@@ -1,10 +1,12 @@
 import { useId } from "react";
-import { threatLabel } from "@/lib/theme";
+import { getThreatLevel } from "@/lib/threat-levels";
+import type { Framework } from "@/lib/framework-config";
 
 interface ThreatGaugeProps {
   score: number | null;
   color: string;
   size?: number;
+  framework?: Framework;
 }
 
 /**
@@ -12,9 +14,14 @@ interface ThreatGaugeProps {
  * Renders an SVG arc from bottom-left to bottom-right (270 degrees sweep).
  * When score is null, displays "--" with no threat level label.
  */
-export function ThreatGauge({ score, color, size = 90 }: ThreatGaugeProps) {
+export function ThreatGauge({
+  score,
+  color,
+  size = 90,
+  framework,
+}: ThreatGaugeProps) {
   const hasScore = score !== null;
-  const label = hasScore ? threatLabel(score) : "";
+  const label = hasScore ? getThreatLevel(score, framework).level : "";
   const cx = size / 2;
   const cy = size / 2;
   const r = size * 0.38;

@@ -25,25 +25,3 @@ export const C = {
 } as const;
 
 export type ColorKey = keyof typeof C;
-
-/**
- * Maps a threat score (0-100) to the corresponding color hex value.
- * 0-25: green (LOW), 26-50: yellow (ELEVATED), 51-75: orange (HIGH), 76-100: red (CRITICAL)
- */
-export function threatColor(level: number): string {
-  if (level <= 25) return C.green;
-  if (level <= 50) return C.yellow;
-  if (level <= 75) return C.orange;
-  return C.red;
-}
-
-/**
- * Maps a threat score (0-100) to a human-readable label.
- * 0-25: LOW, 26-50: ELEVATED, 51-75: HIGH, 76-100: CRITICAL
- */
-export function threatLabel(level: number): string {
-  if (level <= 25) return "LOW";
-  if (level <= 50) return "ELEVATED";
-  if (level <= 75) return "HIGH";
-  return "CRITICAL";
-}
