@@ -555,12 +555,12 @@ policyholders at PE-owned life insurance companies.
 **What this means for the Private Credit domain:** A calm score does not mean absence
 of risk -- it may mean absence of visible stress in a market that is structurally
 opaque. When BDC discounts widen or HY spreads start moving, pay close attention to
-the _rate of change_ (the spread ROC sub-component), because the first visible signs
+the _rate of change_ (the Spread Rate of Change sub-component), because the first visible signs
 of a credit cycle turning will likely appear as acceleration rather than level shifts.
 The 17-year absence of a credit cycle means current market participants have no
 muscle memory for what deterioration looks like in this asset class.
 
-### 8.2 AI Concentration: The Capex-to-Returns Question
+### 8.2 AI / Tech Concentration: The Capex-to-Returns Question
 
 Eisman's second major concern is AI investment -- not that the technology lacks value,
 but that the returns may not justify the spending. Total AI infrastructure spend was
@@ -583,7 +583,7 @@ He is also skeptical of the "AI destroys SaaS" narrative. Major SaaS companies
 disruption in their earnings. Their stocks are declining on narrative, not data --
 which he views as an opportunity, not a signal of fundamental weakness.
 
-**What this means for the AI/Tech Concentration domain:** The SPY/RSP ratio and
+**What this means for the AI / Tech Concentration domain:** The SPY/RSP ratio and
 semiconductor relative performance are leading indicators for the concentration
 thesis. But the real risk Eisman highlights is not measurable in daily price data --
 it is the long-term question of whether AI capex generates adequate ROI. A high
@@ -598,11 +598,11 @@ to margins, revenue growth, and earnings per share growth. If political or
 geopolitical events impact those numbers, stocks move. If they don't, markets shrug.
 
 This has direct implications for reading this dashboard during geopolitical events.
-Energy domain spikes during conflicts (like oil price increases during Middle East
-tensions) tend to be short-lived unless they actually impair corporate earnings. The
-Contagion domain is the more reliable signal: if a geopolitical event is truly
-systemic, it will show up as rising cross-domain correlations, not just an isolated
-energy price spike.
+Energy & Geopolitical domain spikes during conflicts (like oil price increases during
+Middle East tensions) tend to be short-lived unless they actually impair corporate
+earnings. The Contagion domain is the more reliable signal: if a geopolitical event
+is truly systemic, it will show up as rising cross-domain correlations, not just an
+isolated energy price spike.
 
 ### 8.4 Paradigm Shifts and Misinterpreted Data
 
