@@ -517,9 +517,9 @@ before acting on the dashboard's readings.
 ## 8. Expert Perspectives: Why These Domains Matter
 
 The four risk domains this dashboard monitors are not arbitrary groupings. They
-reflect concerns raised independently by multiple experienced market participants.
-This section captures key perspectives that provide context for interpreting domain
-scores.
+reflect concerns raised by experienced market participants with track records of
+identifying systemic risk. This section captures perspectives that provide context
+for interpreting domain scores.
 
 ### 8.1 Private Credit: The $2 Trillion Blind Spot
 

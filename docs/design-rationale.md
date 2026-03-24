@@ -17,18 +17,20 @@ cross-domain correlation signal is the core of what this dashboard monitors.
 
 The project was built by forking the open-source Finance app
 (https://github.com/yorkeccak/finance) and replacing its chat interface with a
-purpose-built risk monitoring dashboard.
+purpose-built risk monitoring dashboard. The scoring pipeline supports dual
+interpretive frameworks (Bookstaber systemic risk and Yardeni resilience) with
+different weights and threat bands, selected via `?framework=` query parameter.
 
 ## Data Source Architecture
 
 The data pipeline uses a tiered approach to minimize cost while maintaining
 real-time price feeds:
 
-| Source              | What it provides                                | Frequency               | Cost                       |
-| ------------------- | ----------------------------------------------- | ----------------------- | -------------------------- |
-| Finnhub (free tier) | All ticker prices, volumes, WebSocket streaming | Every 5 min + real-time | $0                         |
-| FRED                | Credit spreads, Treasury yields                 | Daily                   | $0 (requires free API key) |
-| Valyu API           | SEC filings, news sentiment, insider trading    | Hourly/daily            | ~$10-20/mo                 |
+| Source              | What it provides                                        | Frequency               | Cost                       |
+| ------------------- | ------------------------------------------------------- | ----------------------- | -------------------------- |
+| Finnhub (free tier) | Equity/ETF prices (REST), commodity futures (WebSocket) | Every 5 min + real-time | $0                         |
+| FRED                | Credit spreads, Treasury yields                         | Daily                   | $0 (requires free API key) |
+| Valyu API           | SEC filings, news sentiment, insider trading            | Hourly/daily            | ~$10-20/mo                 |
 
 **Why this split matters:** Finnhub's free tier handles all high-frequency price
 polling (60 calls/min). Valyu is reserved for what it does best -- search, filings,
