@@ -83,7 +83,7 @@ The weight differences reflect genuine analytical disagreement. Bookstaber overw
 
 What Bookstaber calls CRITICAL at 76, Yardeni calls HIGH. Yardeni only hits CRITICAL when multiple domains are simultaneously maxed — because he's watched 45 years of cycles and has a higher threshold for alarm.
 
-For detailed explanations of each domain, how to interpret scores, and what to watch for, see [Interpreting the Dashboard](docs/interpreting-the-dashboard.md).
+For detailed explanations of each domain, how to interpret scores, and what to watch for, see [Interpreting the Dashboard](docs/interpreting-the-dashboard.md). For the project's origin story, data source architecture, and design constraints, see [Design Rationale](docs/design-rationale.md).
 
 ## API Endpoints
 
