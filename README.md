@@ -14,7 +14,7 @@ The dashboard doesn't tell you which one is right. It shows you what each framew
 
 ## Architecture
 
-![Architecture diagram](docs/bookstaber_monitor_architecture.svg)
+![Architecture diagram](docs/architecture.svg)
 
 Three independent services communicate via a shared TimescaleDB instance:
 
@@ -83,7 +83,7 @@ The weight differences reflect genuine analytical disagreement. Bookstaber overw
 
 What Bookstaber calls CRITICAL at 76, Yardeni calls HIGH. Yardeni only hits CRITICAL when multiple domains are simultaneously maxed — because he's watched 45 years of cycles and has a higher threshold for alarm.
 
-For detailed explanations of each domain, how to interpret scores, and what to watch for, see [Interpreting the Dashboard](docs/interpreting-the-dashboard.md).
+For detailed explanations of each domain, how to interpret scores, and what to watch for, see [Interpreting the Dashboard](docs/interpreting-the-dashboard.md). For the project's origin story, data source architecture, and design constraints, see [Design Rationale](docs/design-rationale.md).
 
 ## API Endpoints
 

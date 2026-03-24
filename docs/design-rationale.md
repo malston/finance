@@ -2,24 +2,30 @@
 
 ## Origin
 
-This project implements a systemic risk monitoring thesis from Richard Bookstaber's
-March 2026 NYT opinion piece "I Predicted the 2008 Financial Crisis. What Is Coming
-May Be Worse." Bookstaber argues that private credit, AI/tech concentration,
-energy/geopolitical shocks, and cross-domain contagion are interconnected risks that
-could cascade through the financial system -- not because any single thing fails, but
-because shocks propagate through a tightly coupled structure faster than they can be
-contained.
+This project monitors four interconnected financial risk domains -- Private Credit,
+AI/Tech Concentration, Energy & Geopolitical, and Cross-Domain Contagion -- through
+two competing interpretive frameworks applied to the same market data.
 
-The key analytical insight: when rolling correlations between normally-independent
-domains (private credit, big tech equities, energy futures) spike toward 1.0, forced
-selling in illiquid credit markets is spilling into other asset classes. That
-cross-domain correlation signal is the core of what this dashboard monitors.
+The initial thesis came from Richard Bookstaber's March 2026 NYT opinion piece
+"I Predicted the 2008 Financial Crisis. What Is Coming May Be Worse." Bookstaber
+argues that these risk domains are tightly coupled and that shocks cascade through
+forced selling faster than they can be contained. When rolling correlations between
+normally-independent domains spike, it signals contagion -- the core warning signal
+this dashboard monitors.
+
+The counterpoint comes from Ed Yardeni's resilience-oriented market philosophy.
+Yardeni looks at the same data and sees self-correcting mechanisms: distressed buyers
+stepping in, sector rotation absorbing shocks, and an economy with structural
+capacity to absorb elevated stress. The same correlation spike that Bookstaber reads
+as cascading failure, Yardeni reads as a transient dislocation.
+
+Both frameworks score the same tickers with different weights and threat bands. The
+scoring pipeline runs both on every 5-minute cycle, and the dashboard toggle lets
+users see how different risk philosophies interpret identical market conditions.
 
 The project was built by forking the open-source Finance app
 (https://github.com/yorkeccak/finance) and replacing its chat interface with a
-purpose-built risk monitoring dashboard. The scoring pipeline supports dual
-interpretive frameworks (Bookstaber systemic risk and Yardeni resilience) with
-different weights and threat bands, selected via `?framework=` query parameter.
+purpose-built risk monitoring dashboard.
 
 ## Data Source Architecture
 
