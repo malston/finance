@@ -74,8 +74,12 @@ def timescale_container():
     finally:
         try:
             container.stop()
-        except Exception:
-            pass
+        except Exception as exc:
+            import warnings
+            warnings.warn(
+                f"Failed to stop TimescaleDB container during teardown: {exc}",
+                stacklevel=1,
+            )
 
 
 @pytest.fixture(scope="module")
@@ -118,8 +122,8 @@ def data_timestamp():
 def clean_test_data(db_conn, alert_config):
     """Remove ALL rows for test tickers before and after each test.
 
-    Deletes regardless of source to prevent interference from the live
-    correlation service writing rows while tests run.
+    Deletes regardless of source to ensure each test starts from a clean
+    state and no prior test's data leaks into subsequent assertions.
     """
     alert_rule_ids = [r["id"] for r in alert_config["alerts"]["rules"]]
 
