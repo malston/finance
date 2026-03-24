@@ -42,9 +42,9 @@ go-test-integration: ## Run Go integration tests (requires Docker)
 
 # --- Python (Correlation) ---
 
-py-setup: ## Create venv and install Python deps
+py-setup: ## Create venv and install Python deps (including test deps)
 	cd services/correlation && python3 -m venv .venv && \
-		. .venv/bin/activate && pip install -r requirements.txt
+		. .venv/bin/activate && pip install -r requirements-test.txt
 
 py-test: ## Run Python unit tests only
 	cd services/correlation && . .venv/bin/activate && \

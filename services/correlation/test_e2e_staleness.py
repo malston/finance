@@ -66,11 +66,16 @@ def timescale_container():
         password="testpassword",
         dbname="riskmonitor",
     )
-    container.start()
-    url = container.get_connection_url(driver=None)
-    _apply_init_sql(url)
-    yield container
-    container.stop()
+    try:
+        container.start()
+        url = container.get_connection_url(driver=None)
+        _apply_init_sql(url)
+        yield container
+    finally:
+        try:
+            container.stop()
+        except Exception:
+            pass
 
 
 @pytest.fixture(scope="module")
