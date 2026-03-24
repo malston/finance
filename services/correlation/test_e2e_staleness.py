@@ -7,15 +7,17 @@ No mocks, no stubs. Verifies that:
 - Alert evaluation is suppressed during off-hours
 - Fallback to 2h window works when staleness config block is absent
 
-Requires a running TimescaleDB instance. Set DATABASE_URL to connect.
+Spins up an ephemeral TimescaleDB container via testcontainers-python.
 """
 
 import copy
 import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import psycopg2
 import pytest
+from testcontainers.postgres import PostgresContainer
 
 from alerting.rules_engine import evaluate_rules, load_alert_config
 from scoring.ai_concentration import score_ai_concentration
@@ -42,13 +44,39 @@ _SCORE_TICKERS = [
 ]
 _ALL_TICKERS = _SEED_TICKERS + _SCORE_TICKERS
 
+_INIT_SQL = Path(__file__).resolve().parent.parent / "db" / "init.sql"
+
+
+def _apply_init_sql(connection_url: str) -> None:
+    """Apply the TimescaleDB schema from init.sql."""
+    conn = psycopg2.connect(connection_url)
+    conn.autocommit = True
+    try:
+        with conn.cursor() as cur:
+            cur.execute(_INIT_SQL.read_text())
+    finally:
+        conn.close()
+
 
 @pytest.fixture(scope="module")
-def db_url():
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL not set; e2e tests require a running TimescaleDB")
-    return url
+def timescale_container():
+    container = PostgresContainer(
+        image="timescale/timescaledb:latest-pg16",
+        username="risk",
+        password="testpassword",
+        dbname="riskmonitor",
+    )
+    container.start()
+    url = container.get_connection_url(driver=None)
+    _apply_init_sql(url)
+    yield container
+    container.stop()
+
+
+@pytest.fixture(scope="module")
+def db_url(timescale_container):
+    url = timescale_container.get_connection_url(driver=None)
+    return url + ("&" if "?" in url else "?") + "sslmode=disable"
 
 
 @pytest.fixture(scope="module")
@@ -73,20 +101,12 @@ def alert_config():
 
 @pytest.fixture(scope="module")
 def data_timestamp():
-    """Most recent Friday 4 PM ET (market close), simulating weekend scoring.
+    """A timestamp 24 hours ago, simulating data from a prior session.
 
-    Pinned to a specific day-of-week so the test semantics are consistent
-    regardless of when the suite runs. The 66h off-hours window covers
-    Friday 4 PM to Monday 10 AM ET.
+    Uses a fixed 24h offset so the timestamp is always well within
+    the 66h off-hours staleness window regardless of when the suite runs.
     """
-    now = datetime.now(timezone.utc)
-    # Walk back to the most recent Friday
-    days_since_friday = (now.weekday() - 4) % 7
-    if days_since_friday == 0 and now.hour < 21:
-        days_since_friday = 7  # Before Friday close, use previous Friday
-    last_friday = now - timedelta(days=days_since_friday)
-    # Friday 4 PM ET = 21:00 UTC (EDT) or 20:00 UTC (EST); use 21:00 as safe default
-    return last_friday.replace(hour=21, minute=0, second=0, microsecond=0)
+    return datetime.now(timezone.utc) - timedelta(hours=24)
 
 
 @pytest.fixture(autouse=True)
@@ -218,6 +238,7 @@ def seed_market_data(db_conn, data_timestamp):
     return primary_data
 
 
+@pytest.mark.e2e
 class TestOffHoursScoring:
     """Scorers produce non-None scores during off-hours with relaxed staleness."""
 
@@ -243,6 +264,7 @@ class TestOffHoursScoring:
             assert 0 <= score <= 100, f"Score {score} out of 0-100 range"
 
 
+@pytest.mark.e2e
 class TestSourceTimestamps:
     """Score rows carry source data timestamps, not wall clock time."""
 
@@ -315,6 +337,7 @@ class TestSourceTimestamps:
         )
 
 
+@pytest.mark.e2e
 class TestAlertSuppression:
     """Alert evaluation is suppressed during off-hours."""
 
@@ -378,6 +401,7 @@ class TestAlertSuppression:
         assert isinstance(fired, list)
 
 
+@pytest.mark.e2e
 class TestStalenessWindowFallback:
     """When staleness config block is removed, scorers fall back to 2h window."""
 
