@@ -42,15 +42,15 @@ go-test-integration: ## Run Go integration tests (requires Docker)
 
 # --- Python (Correlation) ---
 
-py-setup: ## Create venv and install Python deps
+py-setup: ## Create venv and install Python deps (including test deps)
 	cd services/correlation && python3 -m venv .venv && \
-		. .venv/bin/activate && pip install -r requirements.txt
+		. .venv/bin/activate && pip install -r requirements-test.txt
 
 py-test: ## Run Python unit tests only
 	cd services/correlation && . .venv/bin/activate && \
 		python -m pytest -v -k "not integration and not e2e"
 
-py-test-all: ## Run full Python test suite (requires DATABASE_URL)
+py-test-all: ## Run full Python test suite (E2E requires Docker; integration requires DATABASE_URL)
 	cd services/correlation && . .venv/bin/activate && \
 		python -m pytest -v
 
