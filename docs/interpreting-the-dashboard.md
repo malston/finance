@@ -15,7 +15,8 @@ weights, threat level bands, and the interpretive lens applied to the numbers.
 
 ### 1.1 Bookstaber: Systemic Risk
 
-Richard Bookstaber is a risk researcher who published an analysis in March 2026
+[Richard Bookstaber](https://en.wikipedia.org/wiki/Richard_Bookstaber) is a risk
+researcher who published an analysis in March 2026
 arguing that private credit, AI concentration, energy/geopolitical shocks, and
 cross-domain contagion are interconnected risks that could cascade through the
 financial system. His core thesis: shocks propagate through a tightly coupled
@@ -35,7 +36,8 @@ elevated signals as warnings of systemic fragility requiring defensive action.
 
 ### 1.2 Yardeni: Resilience
 
-Ed Yardeni is a veteran Wall Street strategist known for a resilience-oriented view
+[Ed Yardeni](https://en.wikipedia.org/wiki/Ed_Yardeni) is a veteran Wall Street
+strategist known for a resilience-oriented view
 of markets. Where Bookstaber sees fragility and contagion, Yardeni sees self-correcting
 mechanisms: distressed funds stepping in as buyers, sector rotation absorbing shocks,
 and the U.S. economy's structural capacity to absorb elevated readings.
