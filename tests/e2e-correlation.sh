@@ -15,10 +15,11 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DC="docker compose -p frm-e2e -f ${PROJECT_DIR}/docker-compose.yml"
 
 cleanup() {
     echo "--- Cleaning up Docker services ---"
-    docker compose -f "${PROJECT_DIR}/docker-compose.yml" down -v --remove-orphans 2>/dev/null || true
+    ${DC} down -v --remove-orphans 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -46,11 +47,11 @@ echo ""
 # 1. Start TimescaleDB
 # ---------------------------------------------------------------------------
 echo "--- Starting TimescaleDB ---"
-docker compose -f "${PROJECT_DIR}/docker-compose.yml" up -d timescaledb
+${DC} up -d timescaledb
 
 echo "--- Waiting for TimescaleDB to be healthy ---"
 for i in $(seq 1 60); do
-    if docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
+    if ${DC} exec -T timescaledb \
         psql -U risk -d riskmonitor -t -c "SELECT 1 FROM time_series LIMIT 0;" >/dev/null 2>&1; then
         echo "TimescaleDB is ready (attempt ${i})"
         break
@@ -106,12 +107,12 @@ done
 SEED_SQL="${SEED_SQL}
 ON CONFLICT (time, ticker) DO UPDATE SET value = EXCLUDED.value, source = EXCLUDED.source;"
 
-docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
+${DC} exec -T timescaledb \
     psql -U risk -d riskmonitor -c "${SEED_SQL}"
 echo "PASS: Seeded 450 rows (10 tickers x 45 days)"
 
 # Verify seeded data count
-SEED_COUNT=$(docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
+SEED_COUNT=$(${DC} exec -T timescaledb \
     psql -U risk -d riskmonitor -t -c \
     "SELECT COUNT(*) FROM time_series WHERE source = 'finnhub';" 2>/dev/null | tr -d '[:space:]')
 
@@ -127,12 +128,12 @@ echo "PASS: ${SEED_COUNT} raw price rows in database"
 echo "--- Starting correlation service (COMPUTE_INTERVAL_SECONDS=5) ---"
 
 # Override the compute interval so the service runs quickly
-COMPUTE_INTERVAL_SECONDS=5 docker compose -f "${PROJECT_DIR}/docker-compose.yml" up -d correlation
+COMPUTE_INTERVAL_SECONDS=5 ${DC} up -d correlation
 
 echo "--- Waiting for domain indices to appear in time_series ---"
 INDEX_TICKERS=("IDX_PRIVATE_CREDIT" "IDX_AI_TECH" "IDX_ENERGY")
 for attempt in $(seq 1 90); do
-    IDX_COUNT=$(docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
+    IDX_COUNT=$(${DC} exec -T timescaledb \
         psql -U risk -d riskmonitor -t -c \
         "SELECT COUNT(DISTINCT ticker) FROM time_series WHERE ticker IN ('IDX_PRIVATE_CREDIT', 'IDX_AI_TECH', 'IDX_ENERGY');" 2>/dev/null | tr -d '[:space:]')
 
@@ -143,7 +144,7 @@ for attempt in $(seq 1 90); do
     if [ "$attempt" -eq 90 ]; then
         echo "FAIL: Timed out waiting for domain indices (found ${IDX_COUNT}/3)" >&2
         # Show correlation service logs for debugging
-        docker compose -f "${PROJECT_DIR}/docker-compose.yml" logs correlation 2>&1 | tail -30
+        ${DC} logs correlation 2>&1 | tail -30
         exit 1
     fi
     sleep 2
@@ -155,7 +156,7 @@ done
 echo ""
 echo "--- Verifying domain indices ---"
 for idx_ticker in "${INDEX_TICKERS[@]}"; do
-    COUNT=$(docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
+    COUNT=$(${DC} exec -T timescaledb \
         psql -U risk -d riskmonitor -t -c \
         "SELECT COUNT(*) FROM time_series WHERE ticker = '${idx_ticker}';" 2>/dev/null | tr -d '[:space:]')
 
@@ -173,7 +174,7 @@ echo ""
 echo "--- Waiting for correlation values to appear ---"
 CORR_TICKERS=("CORR_CREDIT_TECH" "CORR_CREDIT_ENERGY" "CORR_TECH_ENERGY")
 for attempt in $(seq 1 90); do
-    CORR_COUNT=$(docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
+    CORR_COUNT=$(${DC} exec -T timescaledb \
         psql -U risk -d riskmonitor -t -c \
         "SELECT COUNT(DISTINCT ticker) FROM time_series WHERE ticker IN ('CORR_CREDIT_TECH', 'CORR_CREDIT_ENERGY', 'CORR_TECH_ENERGY');" 2>/dev/null | tr -d '[:space:]')
 
@@ -183,7 +184,7 @@ for attempt in $(seq 1 90); do
     fi
     if [ "$attempt" -eq 90 ]; then
         echo "FAIL: Timed out waiting for correlations (found ${CORR_COUNT}/3)" >&2
-        docker compose -f "${PROJECT_DIR}/docker-compose.yml" logs correlation 2>&1 | tail -30
+        ${DC} logs correlation 2>&1 | tail -30
         exit 1
     fi
     sleep 2
@@ -191,7 +192,7 @@ done
 
 # Verify each correlation ticker
 for corr_ticker in "${CORR_TICKERS[@]}"; do
-    COUNT=$(docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
+    COUNT=$(${DC} exec -T timescaledb \
         psql -U risk -d riskmonitor -t -c \
         "SELECT COUNT(*) FROM time_series WHERE ticker = '${corr_ticker}';" 2>/dev/null | tr -d '[:space:]')
 
@@ -207,7 +208,7 @@ done
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Verifying correlation values are in [-1, 1] ---"
-OUT_OF_RANGE=$(docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
+OUT_OF_RANGE=$(${DC} exec -T timescaledb \
     psql -U risk -d riskmonitor -t -c \
     "SELECT COUNT(*) FROM time_series WHERE ticker LIKE 'CORR_%' AND (value < -1.0 OR value > 1.0);" 2>/dev/null | tr -d '[:space:]')
 
@@ -222,7 +223,7 @@ echo "PASS: All correlation values are in [-1, 1]"
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Starting app service ---"
-docker compose -f "${PROJECT_DIR}/docker-compose.yml" up -d app
+${DC} up -d app
 
 echo "--- Waiting for app service to be ready ---"
 for i in $(seq 1 90); do
@@ -232,7 +233,7 @@ for i in $(seq 1 90); do
     fi
     if [ "$i" -eq 90 ]; then
         echo "FAIL: App service did not become ready in 90 seconds" >&2
-        docker compose -f "${PROJECT_DIR}/docker-compose.yml" logs app 2>&1 | tail -30
+        ${DC} logs app 2>&1 | tail -30
         exit 1
     fi
     sleep 1

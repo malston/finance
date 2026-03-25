@@ -13,10 +13,11 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DC="docker compose -p frm-e2e -f ${PROJECT_DIR}/docker-compose.yml"
 
 cleanup() {
     echo "--- Cleaning up Docker services ---"
-    docker compose -f "${PROJECT_DIR}/docker-compose.yml" down -v --remove-orphans 2>/dev/null || true
+    ${DC} down -v --remove-orphans 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -71,12 +72,12 @@ assert_contains() {
 }
 
 psql_exec() {
-    docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
+    ${DC} exec -T timescaledb \
         psql -U risk -d riskmonitor -t -c "$1" 2>/dev/null
 }
 
 psql_exec_raw() {
-    docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
+    ${DC} exec -T timescaledb \
         psql -U risk -d riskmonitor -c "$1" 2>/dev/null
 }
 
@@ -87,7 +88,7 @@ echo ""
 # 1. Start TimescaleDB
 # ---------------------------------------------------------------------------
 echo "--- Starting TimescaleDB ---"
-docker compose -f "${PROJECT_DIR}/docker-compose.yml" up -d timescaledb
+${DC} up -d timescaledb
 
 echo "--- Waiting for TimescaleDB to be healthy ---"
 for i in $(seq 1 60); do
@@ -301,7 +302,7 @@ assert_gte "Seeded news_sentiment rows" 4 "${NEWS_COUNT}"
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Starting app service ---"
-docker compose -f "${PROJECT_DIR}/docker-compose.yml" up -d app
+${DC} up -d app
 
 echo "--- Waiting for app service to be ready ---"
 for i in $(seq 1 120); do
@@ -311,7 +312,7 @@ for i in $(seq 1 120); do
     fi
     if [ "$i" -eq 120 ]; then
         echo "FAIL: App service did not become ready in 120 seconds" >&2
-        docker compose -f "${PROJECT_DIR}/docker-compose.yml" logs app 2>&1 | tail -40
+        ${DC} logs app 2>&1 | tail -40
         exit 1
     fi
     sleep 1
