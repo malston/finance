@@ -104,10 +104,10 @@ class TestStalenessLogging:
 
 @pytest.mark.integration
 class TestFetchLatestValueIntegration:
-    """Integration tests requiring DATABASE_URL.
+    """Integration tests for fetch_latest_value SQL execution.
 
-    These test actual SQL execution against TimescaleDB to verify
-    that the time-filtering query works correctly.
+    Verifies time-filtering queries work correctly against a real
+    TimescaleDB instance via the shared testcontainer.
     """
 
     @pytest.fixture(autouse=True)
