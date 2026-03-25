@@ -3,7 +3,7 @@
 Seeds time_series with escalating scores, runs the rules engine multiple times,
 and verifies alerts fire at the correct consecutive count with cooldown enforcement.
 
-Requires DATABASE_URL environment variable pointing to a TimescaleDB instance.
+Requires Docker for the shared TimescaleDB testcontainer.
 """
 
 import os
@@ -34,7 +34,8 @@ def db_conn(db_url):
     conn = psycopg2.connect(db_url)
     conn.autocommit = True
     yield conn
-    conn.close()
+    if not conn.closed:
+        conn.close()
 
 
 @pytest.fixture(autouse=True)

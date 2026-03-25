@@ -1,6 +1,6 @@
 """Integration tests for domain index construction with real TimescaleDB.
 
-Requires a running TimescaleDB instance. Set DATABASE_URL to connect.
+Requires Docker for the shared TimescaleDB testcontainer.
 """
 
 from datetime import datetime, timezone, timedelta
@@ -17,7 +17,8 @@ def db_conn(db_url):
     conn = psycopg2.connect(db_url)
     conn.autocommit = True
     yield conn
-    conn.close()
+    if not conn.closed:
+        conn.close()
 
 
 @pytest.fixture(autouse=True)

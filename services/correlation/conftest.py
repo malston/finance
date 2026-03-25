@@ -35,14 +35,20 @@ def timescale_container():
     try:
         container.start()
         url = container.get_connection_url(driver=None)
-        _apply_init_sql(url)
+        try:
+            _apply_init_sql(url)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to apply schema from {_INIT_SQL} to testcontainer: {exc}"
+            ) from exc
         yield container
     finally:
         try:
             container.stop()
         except Exception as exc:
             warnings.warn(
-                f"Failed to stop TimescaleDB container during teardown: {exc}",
+                f"Failed to stop TimescaleDB container during teardown: {type(exc).__name__}: {exc}",
+                ResourceWarning,
                 stacklevel=1,
             )
 

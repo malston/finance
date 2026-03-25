@@ -19,7 +19,8 @@ def db_conn(db_url):
     conn = psycopg2.connect(db_url)
     conn.autocommit = True
     yield conn
-    conn.close()
+    if not conn.closed:
+        conn.close()
 
 
 @pytest.fixture(autouse=True)

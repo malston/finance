@@ -7,7 +7,7 @@ No mocks, no stubs. Verifies that:
 - Alert evaluation is suppressed during off-hours
 - Fallback to 2h window works when staleness config block is absent
 
-Spins up an ephemeral TimescaleDB container via testcontainers-python.
+Uses the shared TimescaleDB testcontainer from conftest.py.
 """
 
 import copy
