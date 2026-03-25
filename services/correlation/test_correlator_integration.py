@@ -6,7 +6,6 @@ the stored correlation values match numpy.corrcoef for the same windows.
 Requires a running TimescaleDB instance. Set DATABASE_URL to connect.
 """
 
-import os
 from datetime import datetime, timezone, timedelta
 
 import numpy as np
@@ -19,15 +18,6 @@ from correlator import CORRELATION_PAIRS, ROLLING_WINDOW, compute_correlations
 CORR_TICKERS = list(CORRELATION_PAIRS.keys())
 INDEX_TICKERS = ["IDX_PRIVATE_CREDIT", "IDX_AI_TECH", "IDX_ENERGY"]
 ALL_MANAGED_TICKERS = CORR_TICKERS + INDEX_TICKERS
-
-
-@pytest.fixture(scope="module")
-def db_url():
-    """Database URL from environment."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL environment variable is required for integration tests")
-    return url
 
 
 @pytest.fixture(scope="module")
@@ -92,6 +82,7 @@ def _seed_index_values(db_conn, n_days=40):
     return index_values
 
 
+@pytest.mark.integration
 class TestIntegrationComputeCorrelations:
     """End-to-end: seed index values -> compute correlations -> verify stored values."""
 
