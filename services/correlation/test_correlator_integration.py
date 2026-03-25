@@ -3,10 +3,9 @@
 Seeds 40 days of known index values, runs compute_correlations, and verifies
 the stored correlation values match numpy.corrcoef for the same windows.
 
-Requires a running TimescaleDB instance. Set DATABASE_URL to connect.
+Requires Docker for the shared TimescaleDB testcontainer.
 """
 
-import os
 from datetime import datetime, timezone, timedelta
 
 import numpy as np
@@ -22,21 +21,13 @@ ALL_MANAGED_TICKERS = CORR_TICKERS + INDEX_TICKERS
 
 
 @pytest.fixture(scope="module")
-def db_url():
-    """Database URL from environment."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL environment variable is required for integration tests")
-    return url
-
-
-@pytest.fixture(scope="module")
 def db_conn(db_url):
     """Shared database connection for the test module."""
     conn = psycopg2.connect(db_url)
     conn.autocommit = True
     yield conn
-    conn.close()
+    if not conn.closed:
+        conn.close()
 
 
 @pytest.fixture(autouse=True)
@@ -92,6 +83,7 @@ def _seed_index_values(db_conn, n_days=40):
     return index_values
 
 
+@pytest.mark.integration
 class TestIntegrationComputeCorrelations:
     """End-to-end: seed index values -> compute correlations -> verify stored values."""
 

@@ -8,25 +8,25 @@ and logging of stale-vs-missing data distinctions.
 import logging
 from datetime import datetime, timezone, timedelta
 
+import psycopg2
 import pytest
 
 from scoring.common import fetch_latest_value
 
 
+@pytest.fixture(scope="module")
+def db_conn(db_url):
+    """Shared database connection for the test module."""
+    conn = psycopg2.connect(db_url)
+    conn.autocommit = True
+    yield conn
+    if not conn.closed:
+        conn.close()
+
+
+@pytest.mark.integration
 class TestMaxAgeHoursValidation:
     """Validation of max_age_hours rejects zero and negative values."""
-
-    @pytest.fixture()
-    def db_conn(self):
-        import os
-        url = os.environ.get("DATABASE_URL")
-        if not url:
-            pytest.skip("DATABASE_URL required for integration tests")
-        import psycopg2
-        conn = psycopg2.connect(url)
-        conn.autocommit = True
-        yield conn
-        conn.close()
 
     def test_max_age_hours_zero_raises_value_error(self, db_conn):
         with pytest.raises(ValueError, match="max_age_hours must be positive"):
@@ -37,20 +37,9 @@ class TestMaxAgeHoursValidation:
             fetch_latest_value(db_conn, "ANY_TICKER", max_age_hours=-1)
 
 
+@pytest.mark.integration
 class TestStalenessLogging:
     """Verify that fetch_latest_value logs distinct messages for stale vs missing data."""
-
-    @pytest.fixture()
-    def db_conn(self):
-        import os
-        url = os.environ.get("DATABASE_URL")
-        if not url:
-            pytest.skip("DATABASE_URL required for integration tests")
-        import psycopg2
-        conn = psycopg2.connect(url)
-        conn.autocommit = True
-        yield conn
-        conn.close()
 
     @pytest.fixture(autouse=True)
     def clean_test_data(self, db_conn):
@@ -113,24 +102,13 @@ class TestStalenessLogging:
         assert not any("Stale data" in m for m in caplog.messages)
 
 
+@pytest.mark.integration
 class TestFetchLatestValueIntegration:
-    """Integration tests requiring DATABASE_URL.
+    """Integration tests for fetch_latest_value SQL execution.
 
-    These test actual SQL execution against TimescaleDB to verify
-    that the time-filtering query works correctly.
+    Verifies time-filtering queries work correctly against a real
+    TimescaleDB instance via the shared testcontainer.
     """
-
-    @pytest.fixture()
-    def db_conn(self):
-        import os
-        url = os.environ.get("DATABASE_URL")
-        if not url:
-            pytest.skip("DATABASE_URL required for integration tests")
-        import psycopg2
-        conn = psycopg2.connect(url)
-        conn.autocommit = True
-        yield conn
-        conn.close()
 
     @pytest.fixture(autouse=True)
     def clean_test_data(self, db_conn):

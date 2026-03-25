@@ -1,9 +1,8 @@
 """Integration tests for domain index construction with real TimescaleDB.
 
-Requires a running TimescaleDB instance. Set DATABASE_URL to connect.
+Requires Docker for the shared TimescaleDB testcontainer.
 """
 
-import os
 from datetime import datetime, timezone, timedelta
 
 import psycopg2
@@ -13,21 +12,13 @@ from index_builder import compute_domain_indices, INDEX_DEFINITIONS
 
 
 @pytest.fixture(scope="module")
-def db_url():
-    """Database URL from environment."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL environment variable is required for integration tests")
-    return url
-
-
-@pytest.fixture(scope="module")
 def db_conn(db_url):
     """Shared database connection for the test module."""
     conn = psycopg2.connect(db_url)
     conn.autocommit = True
     yield conn
-    conn.close()
+    if not conn.closed:
+        conn.close()
 
 
 @pytest.fixture(autouse=True)
@@ -93,6 +84,7 @@ def seed_prices(db_conn, clean_computed_rows):
         )
 
 
+@pytest.mark.integration
 class TestIntegrationComputeDomainIndices:
     """End-to-end: seed prices -> compute indices -> verify stored values."""
 

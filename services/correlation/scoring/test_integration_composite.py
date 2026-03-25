@@ -3,7 +3,7 @@
 Seeds known domain scores into time_series, runs score_composite(), and verifies
 the SCORE_COMPOSITE row is written correctly with expected weighted average.
 
-Requires DATABASE_URL environment variable pointing to a TimescaleDB instance.
+Requires Docker for the shared TimescaleDB testcontainer.
 """
 
 import os
@@ -26,15 +26,6 @@ ALL_MANAGED_TICKERS = DOMAIN_TICKERS + ["SCORE_COMPOSITE"]
 
 
 @pytest.fixture(scope="module")
-def db_url():
-    """Database URL from environment."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL environment variable is required for integration tests")
-    return url
-
-
-@pytest.fixture(scope="module")
 def config():
     """Load scoring config from YAML."""
     config_path = os.path.join(
@@ -50,7 +41,8 @@ def db_conn(db_url):
     conn = psycopg2.connect(db_url)
     conn.autocommit = True
     yield conn
-    conn.close()
+    if not conn.closed:
+        conn.close()
 
 
 @pytest.fixture(autouse=True)
@@ -93,6 +85,7 @@ def _read_composite_score(db_conn):
         return cur.fetchone()
 
 
+@pytest.mark.integration
 class TestIntegrationScoreComposite:
     """End-to-end: seed domain scores -> score_composite() -> verify DB output."""
 

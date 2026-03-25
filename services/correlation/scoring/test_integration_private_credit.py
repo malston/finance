@@ -3,7 +3,7 @@
 Seeds known values into time_series, runs score_private_credit(),
 and verifies the SCORE_PRIVATE_CREDIT row is written correctly.
 
-Requires DATABASE_URL environment variable pointing to a TimescaleDB instance.
+Requires Docker for the shared TimescaleDB testcontainer.
 """
 
 import os
@@ -14,15 +14,6 @@ import pytest
 
 from scoring.common import load_scoring_config
 from scoring.private_credit import score_private_credit
-
-
-@pytest.fixture(scope="module")
-def db_url():
-    """Database URL from environment."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL not set; integration tests require a running TimescaleDB")
-    return url
 
 
 @pytest.fixture(scope="module")
@@ -41,7 +32,8 @@ def db_conn(db_url):
     conn = psycopg2.connect(db_url)
     conn.autocommit = True
     yield conn
-    conn.close()
+    if not conn.closed:
+        conn.close()
 
 
 @pytest.fixture(autouse=True)
@@ -92,6 +84,7 @@ def _seed_bdc_discount(db_conn, value):
         )
 
 
+@pytest.mark.integration
 class TestIntegrationScorePrivateCredit:
     """Seed known values, run scoring, verify DB output."""
 

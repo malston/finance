@@ -3,10 +3,8 @@
 Tests that fired alerts get dispatched and that alert_history.delivered
 is updated after successful dispatch.
 
-Requires DATABASE_URL environment variable pointing to a TimescaleDB instance.
+Requires Docker for the shared TimescaleDB testcontainer.
 """
-
-import os
 
 import psycopg2
 import pytest
@@ -16,33 +14,13 @@ from alerting.dispatch import dispatch_alert, update_delivery_status
 
 
 @pytest.fixture(scope="module")
-def db_url():
-    """Database URL from environment."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL environment variable is required for integration tests")
-    return url
-
-
-@pytest.fixture(scope="module")
 def db_conn(db_url):
     """Shared database connection for the test module."""
     conn = psycopg2.connect(db_url)
     conn.autocommit = True
-    with conn.cursor() as cur:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS alert_history (
-                id           SERIAL PRIMARY KEY,
-                rule_id      TEXT NOT NULL,
-                triggered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                value        DOUBLE PRECISION NOT NULL,
-                message      TEXT NOT NULL,
-                channels     TEXT[] NOT NULL,
-                delivered    BOOLEAN NOT NULL DEFAULT FALSE
-            )
-        """)
     yield conn
-    conn.close()
+    if not conn.closed:
+        conn.close()
 
 
 @pytest.fixture(autouse=True)
@@ -68,6 +46,7 @@ def _seed_alert(db_conn, rule_id, value=80.0, message="test alert", channels=Non
         return cur.fetchone()[0]
 
 
+@pytest.mark.integration
 class TestUpdateDeliveryStatus:
     """Test marking alert_history rows as delivered using a real DB."""
 
@@ -110,6 +89,7 @@ class TestUpdateDeliveryStatus:
             assert row[0] is False
 
 
+@pytest.mark.integration
 class TestDispatchAndRecord:
     """Test the combined dispatch + delivery recording flow."""
 

@@ -3,7 +3,7 @@
 Seeds known correlation, VIX, and MOVE values into time_series, runs
 score_contagion(), and verifies the SCORE_CONTAGION row is written correctly.
 
-Requires DATABASE_URL environment variable pointing to a TimescaleDB instance.
+Requires Docker for the shared TimescaleDB testcontainer.
 """
 
 import os
@@ -18,15 +18,6 @@ from scoring.contagion import score_contagion
 
 CORR_TICKERS = ["CORR_CREDIT_TECH", "CORR_CREDIT_ENERGY", "CORR_TECH_ENERGY"]
 ALL_MANAGED_TICKERS = CORR_TICKERS + ["VIXY", "SCORE_CONTAGION"]
-
-
-@pytest.fixture(scope="module")
-def db_url():
-    """Database URL from environment."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL environment variable is required for integration tests")
-    return url
 
 
 @pytest.fixture(scope="module")
@@ -45,7 +36,8 @@ def db_conn(db_url):
     conn = psycopg2.connect(db_url)
     conn.autocommit = True
     yield conn
-    conn.close()
+    if not conn.closed:
+        conn.close()
 
 
 @pytest.fixture(autouse=True)
@@ -103,6 +95,7 @@ def _read_score(db_conn):
         return cur.fetchone()
 
 
+@pytest.mark.integration
 class TestIntegrationScoreContagion:
     """End-to-end: seed inputs -> score_contagion() -> verify DB output."""
 

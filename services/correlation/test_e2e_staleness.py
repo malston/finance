@@ -7,17 +7,15 @@ No mocks, no stubs. Verifies that:
 - Alert evaluation is suppressed during off-hours
 - Fallback to 2h window works when staleness config block is absent
 
-Spins up an ephemeral TimescaleDB container via testcontainers-python.
+Uses the shared TimescaleDB testcontainer from conftest.py.
 """
 
 import copy
 import os
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import psycopg2
 import pytest
-from testcontainers.postgres import PostgresContainer
 
 from alerting.rules_engine import evaluate_rules, load_alert_config
 from scoring.ai_concentration import score_ai_concentration
@@ -43,49 +41,6 @@ _SCORE_TICKERS = [
     "SCORE_COMPOSITE",
 ]
 _ALL_TICKERS = _SEED_TICKERS + _SCORE_TICKERS
-
-_INIT_SQL = Path(__file__).resolve().parent.parent / "db" / "init.sql"
-
-
-def _apply_init_sql(connection_url: str) -> None:
-    """Apply the TimescaleDB schema from init.sql."""
-    conn = psycopg2.connect(connection_url)
-    conn.autocommit = True
-    try:
-        with conn.cursor() as cur:
-            cur.execute(_INIT_SQL.read_text())
-    finally:
-        conn.close()
-
-
-@pytest.fixture(scope="module")
-def timescale_container():
-    container = PostgresContainer(
-        image="timescale/timescaledb:latest-pg16",
-        username="risk",
-        password="testpassword",
-        dbname="riskmonitor",
-    )
-    try:
-        container.start()
-        url = container.get_connection_url(driver=None)
-        _apply_init_sql(url)
-        yield container
-    finally:
-        try:
-            container.stop()
-        except Exception as exc:
-            import warnings
-            warnings.warn(
-                f"Failed to stop TimescaleDB container during teardown: {exc}",
-                stacklevel=1,
-            )
-
-
-@pytest.fixture(scope="module")
-def db_url(timescale_container):
-    url = timescale_container.get_connection_url(driver=None)
-    return url + ("&" if "?" in url else "?") + "sslmode=disable"
 
 
 @pytest.fixture(scope="module")

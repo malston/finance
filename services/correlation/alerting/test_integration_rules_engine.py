@@ -3,7 +3,7 @@
 Seeds time_series with escalating scores, runs the rules engine multiple times,
 and verifies alerts fire at the correct consecutive count with cooldown enforcement.
 
-Requires DATABASE_URL environment variable pointing to a TimescaleDB instance.
+Requires Docker for the shared TimescaleDB testcontainer.
 """
 
 import os
@@ -22,15 +22,6 @@ MANAGED_TICKERS = ["SCORE_COMPOSITE", "VIXY", "SCORE_CONTAGION"]
 
 
 @pytest.fixture(scope="module")
-def db_url():
-    """Database URL from environment."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL not set; integration tests require a running TimescaleDB")
-    return url
-
-
-@pytest.fixture(scope="module")
 def alert_config():
     """Load alert config from YAML."""
     with open(CONFIG_PATH) as f:
@@ -39,34 +30,12 @@ def alert_config():
 
 @pytest.fixture(scope="module")
 def db_conn(db_url):
-    """Shared database connection for the test module.
-
-    Also ensures alert_state and alert_history tables exist before tests run.
-    """
+    """Shared database connection for the test module."""
     conn = psycopg2.connect(db_url)
     conn.autocommit = True
-    with conn.cursor() as cur:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS alert_state (
-                rule_id           TEXT PRIMARY KEY,
-                consecutive_count INTEGER NOT NULL DEFAULT 0,
-                last_triggered    TIMESTAMPTZ,
-                last_value        DOUBLE PRECISION
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS alert_history (
-                id           SERIAL PRIMARY KEY,
-                rule_id      TEXT NOT NULL,
-                triggered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                value        DOUBLE PRECISION NOT NULL,
-                message      TEXT NOT NULL,
-                channels     TEXT[] NOT NULL,
-                delivered    BOOLEAN NOT NULL DEFAULT FALSE
-            )
-        """)
     yield conn
-    conn.close()
+    if not conn.closed:
+        conn.close()
 
 
 @pytest.fixture(autouse=True)
@@ -102,6 +71,7 @@ def _seed_reading(db_conn, ticker, value, time_offset_minutes=0):
         )
 
 
+@pytest.mark.integration
 class TestIntegrationAlertRulesEngine:
     """End-to-end: seed scores -> evaluate_rules() -> verify alert_state and alert_history."""
 
