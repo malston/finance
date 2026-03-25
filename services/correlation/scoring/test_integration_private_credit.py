@@ -17,15 +17,6 @@ from scoring.private_credit import score_private_credit
 
 
 @pytest.fixture(scope="module")
-def db_url():
-    """Database URL from environment."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL not set; integration tests require a running TimescaleDB")
-    return url
-
-
-@pytest.fixture(scope="module")
 def config():
     """Load scoring config from YAML."""
     config_path = os.path.join(
@@ -92,6 +83,7 @@ def _seed_bdc_discount(db_conn, value):
         )
 
 
+@pytest.mark.integration
 class TestIntegrationScorePrivateCredit:
     """Seed known values, run scoring, verify DB output."""
 
