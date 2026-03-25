@@ -21,15 +21,6 @@ ALL_MANAGED_TICKERS = CORR_TICKERS + ["VIXY", "SCORE_CONTAGION"]
 
 
 @pytest.fixture(scope="module")
-def db_url():
-    """Database URL from environment."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL environment variable is required for integration tests")
-    return url
-
-
-@pytest.fixture(scope="module")
 def config():
     """Load scoring config from YAML."""
     config_path = os.path.join(
@@ -103,6 +94,7 @@ def _read_score(db_conn):
         return cur.fetchone()
 
 
+@pytest.mark.integration
 class TestIntegrationScoreContagion:
     """End-to-end: seed inputs -> score_contagion() -> verify DB output."""
 
