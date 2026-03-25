@@ -3,22 +3,12 @@
 Requires a running TimescaleDB instance. Set DATABASE_URL to connect.
 """
 
-import os
 from datetime import datetime, timezone, timedelta
 
 import psycopg2
 import pytest
 
 from index_builder import compute_domain_indices, INDEX_DEFINITIONS
-
-
-@pytest.fixture(scope="module")
-def db_url():
-    """Database URL from environment."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL environment variable is required for integration tests")
-    return url
 
 
 @pytest.fixture(scope="module")
@@ -93,6 +83,7 @@ def seed_prices(db_conn, clean_computed_rows):
         )
 
 
+@pytest.mark.integration
 class TestIntegrationComputeDomainIndices:
     """End-to-end: seed prices -> compute indices -> verify stored values."""
 
