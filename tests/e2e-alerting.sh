@@ -239,11 +239,19 @@ echo "--- Running alert evaluation (iteration 1) ---"
 DB_URL="postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}"
 CORRELATION_DIR="${PROJECT_DIR}/services/correlation"
 
-# Set up a virtual environment for Python dependencies
-E2E_VENV=$(mktemp -d /tmp/e2e-alerting-venv.XXXXXX)
-python3 -m venv "${E2E_VENV}"
-source "${E2E_VENV}/bin/activate"
-pip install -q psycopg2-binary pyyaml requests 2>/dev/null
+# Reuse the correlation service venv if available (has all needed packages).
+# Fall back to a disposable temp venv otherwise.
+CORR_VENV="${CORRELATION_DIR}/.venv"
+if [ -f "${CORR_VENV}/bin/activate" ]; then
+    echo "  Using existing venv at ${CORR_VENV}"
+    source "${CORR_VENV}/bin/activate"
+else
+    echo "  Creating temporary venv (correlation .venv not found)"
+    E2E_VENV=$(mktemp -d /tmp/e2e-alerting-venv.XXXXXX)
+    python3 -m venv "${E2E_VENV}"
+    source "${E2E_VENV}/bin/activate"
+    pip install -q psycopg2-binary pyyaml requests 2>/dev/null
+fi
 
 # Run evaluate_rules 3 times to build consecutive count for composite_critical.
 # Insert a new SCORE_COMPOSITE reading before each iteration so the value changes
