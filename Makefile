@@ -48,9 +48,9 @@ py-setup: ## Create venv and install Python deps (including test deps)
 
 py-test: ## Run Python unit tests only
 	cd services/correlation && . .venv/bin/activate && \
-		python -m pytest -v -k "not integration and not e2e"
+		python -m pytest -v -m "not integration and not e2e"
 
-py-test-all: ## Run full Python test suite (E2E requires Docker; integration requires DATABASE_URL)
+py-test-all: ## Run full Python test suite (requires Docker)
 	cd services/correlation && . .venv/bin/activate && \
 		python -m pytest -v
 

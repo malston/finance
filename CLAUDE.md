@@ -95,8 +95,8 @@ go test -tags=integration -count=1 ./...  # Integration tests (requires Docker)
 cd services/correlation
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-test.txt
-python -m pytest -v -k "not integration and not e2e"  # Unit tests only
-python -m pytest -v                                                # Full suite (E2E requires Docker; integration requires DATABASE_URL)
+python -m pytest -v -m "not integration and not e2e"  # Unit tests only
+python -m pytest -v                                    # Full suite (requires Docker)
 ```
 
 ### Docker
