@@ -104,59 +104,7 @@ for i in $(seq 1 60); do
 done
 
 # ---------------------------------------------------------------------------
-# 2. Create additional tables that may not be in init.sql yet
-#    (These are added by dependency branches and will be in init.sql
-#     once all stories merge to the epic branch.)
-# ---------------------------------------------------------------------------
-echo "--- Ensuring all required tables exist ---"
-
-psql_exec_raw "
-CREATE TABLE IF NOT EXISTS source_health (
-    source              TEXT PRIMARY KEY,
-    last_success        TIMESTAMPTZ,
-    last_error          TIMESTAMPTZ,
-    last_error_msg      TEXT,
-    consecutive_failures INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS news_sentiment (
-    id          SERIAL PRIMARY KEY,
-    time        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    domain      TEXT NOT NULL,
-    headline    TEXT NOT NULL,
-    sentiment   DOUBLE PRECISION NOT NULL,
-    source_name TEXT,
-    source_url  TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_news_sentiment_domain_time
-    ON news_sentiment (domain, time DESC);
-
-CREATE TABLE IF NOT EXISTS alert_state (
-    rule_id           TEXT PRIMARY KEY,
-    consecutive_count INTEGER NOT NULL DEFAULT 0,
-    last_triggered    TIMESTAMPTZ,
-    last_value        DOUBLE PRECISION
-);
-
-CREATE TABLE IF NOT EXISTS alert_history (
-    id           SERIAL PRIMARY KEY,
-    rule_id      TEXT NOT NULL,
-    triggered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    value        DOUBLE PRECISION NOT NULL,
-    message      TEXT NOT NULL,
-    channels     TEXT[] NOT NULL,
-    delivered    BOOLEAN NOT NULL DEFAULT FALSE
-);
-
-CREATE INDEX IF NOT EXISTS idx_alert_history_rule_id_triggered
-    ON alert_history (rule_id, triggered_at DESC);
-"
-
-pass "All required tables created"
-
-# ---------------------------------------------------------------------------
-# 3. Seed representative data
+# 2. Seed representative data
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Seeding time_series: composite and domain scores ---"
@@ -298,7 +246,7 @@ NEWS_COUNT=$(psql_exec "SELECT COUNT(*) FROM news_sentiment;" | tr -d '[:space:]
 assert_gte "Seeded news_sentiment rows" 4 "${NEWS_COUNT}"
 
 # ---------------------------------------------------------------------------
-# 4. Start the app service
+# 3. Start the app service
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Starting app service ---"
@@ -319,7 +267,7 @@ for i in $(seq 1 120); do
 done
 
 # ---------------------------------------------------------------------------
-# 5. Verify: GET / returns 200 with "BOOKSTABER RISK MONITOR"
+# 4. Verify: GET / returns 200 with "BOOKSTABER RISK MONITOR"
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Verifying dashboard page ---"
@@ -328,7 +276,7 @@ DASHBOARD_HTML=$(curl -sf http://localhost:3000)
 assert_contains "Dashboard returns HTML with title" "BOOKSTABER RISK MONITOR" "${DASHBOARD_HTML}"
 
 # ---------------------------------------------------------------------------
-# 6. Verify: GET /api/risk/scores
+# 5. Verify: GET /api/risk/scores
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Verifying GET /api/risk/scores ---"
@@ -359,7 +307,7 @@ for domain in private_credit ai_concentration energy_geo contagion; do
 done
 
 # ---------------------------------------------------------------------------
-# 7. Verify: GET /api/risk/correlations
+# 6. Verify: GET /api/risk/correlations
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Verifying GET /api/risk/correlations ---"
@@ -377,7 +325,7 @@ done
 pass "All 3 correlation pairs present"
 
 # ---------------------------------------------------------------------------
-# 8. Verify: GET /api/risk/health
+# 7. Verify: GET /api/risk/health
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Verifying GET /api/risk/health ---"
@@ -397,7 +345,7 @@ for src in fred finnhub; do
 done
 
 # ---------------------------------------------------------------------------
-# 9. Verify: GET /api/risk/news
+# 8. Verify: GET /api/risk/news
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Verifying GET /api/risk/news ---"
@@ -419,7 +367,7 @@ for domain in private_credit ai_concentration energy_geo contagion; do
 done
 
 # ---------------------------------------------------------------------------
-# 10. Verify: GET /api/risk/freshness
+# 9. Verify: GET /api/risk/freshness
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Verifying GET /api/risk/freshness ---"
@@ -442,7 +390,7 @@ fi
 pass "OWL freshness status: ${OWL_STATUS}"
 
 # ---------------------------------------------------------------------------
-# 11. Verify: GET /api/risk/alerts
+# 10. Verify: GET /api/risk/alerts
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Verifying GET /api/risk/alerts ---"
@@ -460,7 +408,7 @@ ALERTS_LEN=$(echo "${ALERTS_RESPONSE}" | jq '.alerts | length')
 pass "Alerts array length: ${ALERTS_LEN} (empty is valid)"
 
 # ---------------------------------------------------------------------------
-# 12. Smoke test: dashboard HTML structural elements
+# 11. Smoke test: dashboard HTML structural elements
 # ---------------------------------------------------------------------------
 echo ""
 echo "--- Smoke testing dashboard HTML structure ---"
