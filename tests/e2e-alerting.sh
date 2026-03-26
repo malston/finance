@@ -247,11 +247,11 @@ if [ -f "${CORR_VENV}/bin/activate" ] \
     echo "  Using existing venv at ${CORR_VENV}"
     source "${CORR_VENV}/bin/activate"
 else
-    echo "  Creating temporary venv (correlation .venv not found)"
+    echo "  Creating temporary venv (correlation .venv missing or incomplete)"
     E2E_VENV=$(mktemp -d /tmp/e2e-alerting-venv.XXXXXX)
     python3 -m venv "${E2E_VENV}"
     source "${E2E_VENV}/bin/activate"
-    pip install -q psycopg2-binary pyyaml requests 2>/dev/null
+    pip install -q psycopg2-binary pyyaml requests
 fi
 
 # Run evaluate_rules 3 times to build consecutive count for composite_critical.
