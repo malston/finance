@@ -11,6 +11,7 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DC=(docker compose -p frm-e2e -f "${PROJECT_DIR}/docker-compose.yml")
 
 DB_USER="risk"
 DB_NAME="riskmonitor"
@@ -25,7 +26,7 @@ cleanup() {
     if [ -n "${WEBHOOK_PID}" ] && kill -0 "${WEBHOOK_PID}" 2>/dev/null; then
         kill "${WEBHOOK_PID}" 2>/dev/null || true
     fi
-    docker compose -f "${PROJECT_DIR}/docker-compose.yml" down -v --remove-orphans 2>/dev/null || true
+    "${DC[@]}" down -v --remove-orphans 2>/dev/null || true
     rm -f "${WEBHOOK_LOG}" "${ALERT_CONFIG}"
     if [ -n "${E2E_VENV:-}" ] && [ -d "${E2E_VENV:-}" ]; then
         rm -rf "${E2E_VENV}"
@@ -52,7 +53,7 @@ require_cmd jq
 require_cmd python3
 
 psql_cmd() {
-    docker compose -f "${PROJECT_DIR}/docker-compose.yml" exec -T timescaledb \
+    "${DC[@]}" exec -T timescaledb \
         psql -U "${DB_USER}" -d "${DB_NAME}" "$@"
 }
 
@@ -130,7 +131,7 @@ echo "Webhook URL: ${WEBHOOK_URL}"
 # -------------------------------------------------------------------
 echo ""
 echo "--- Starting TimescaleDB ---"
-docker compose -f "${PROJECT_DIR}/docker-compose.yml" up -d timescaledb
+"${DC[@]}" up -d timescaledb
 
 echo "--- Waiting for TimescaleDB to be healthy ---"
 for i in $(seq 1 60); do
@@ -238,11 +239,20 @@ echo "--- Running alert evaluation (iteration 1) ---"
 DB_URL="postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}"
 CORRELATION_DIR="${PROJECT_DIR}/services/correlation"
 
-# Set up a virtual environment for Python dependencies
-E2E_VENV=$(mktemp -d /tmp/e2e-alerting-venv.XXXXXX)
-python3 -m venv "${E2E_VENV}"
-source "${E2E_VENV}/bin/activate"
-pip install -q psycopg2-binary pyyaml requests 2>/dev/null
+# Reuse the correlation service venv if available (has all needed packages).
+# Fall back to a disposable temp venv otherwise.
+CORR_VENV="${CORRELATION_DIR}/.venv"
+if [ -f "${CORR_VENV}/bin/activate" ] \
+   && (source "${CORR_VENV}/bin/activate" && python3 -c 'import psycopg2, yaml, requests' 2>/dev/null); then
+    echo "  Using existing venv at ${CORR_VENV}"
+    source "${CORR_VENV}/bin/activate"
+else
+    echo "  Creating temporary venv (correlation .venv missing or incomplete)"
+    E2E_VENV=$(mktemp -d /tmp/e2e-alerting-venv.XXXXXX)
+    python3 -m venv "${E2E_VENV}"
+    source "${E2E_VENV}/bin/activate"
+    pip install -q psycopg2-binary pyyaml requests
+fi
 
 # Run evaluate_rules 3 times to build consecutive count for composite_critical.
 # Insert a new SCORE_COMPOSITE reading before each iteration so the value changes
@@ -389,7 +399,7 @@ assert_eq "vix_spike re-fired after cooldown expiry" "2" "${VIX_AFTER_EXPIRY}"
 # -------------------------------------------------------------------
 echo ""
 echo "--- Starting app service for API tests ---"
-docker compose -f "${PROJECT_DIR}/docker-compose.yml" up -d app
+"${DC[@]}" up -d app
 
 echo "--- Waiting for app service ---"
 for i in $(seq 1 90); do
