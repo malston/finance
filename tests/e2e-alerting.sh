@@ -11,7 +11,7 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-DC="docker compose -p frm-e2e -f ${PROJECT_DIR}/docker-compose.yml"
+DC=(docker compose -p frm-e2e -f "${PROJECT_DIR}/docker-compose.yml")
 
 DB_USER="risk"
 DB_NAME="riskmonitor"
@@ -26,7 +26,7 @@ cleanup() {
     if [ -n "${WEBHOOK_PID}" ] && kill -0 "${WEBHOOK_PID}" 2>/dev/null; then
         kill "${WEBHOOK_PID}" 2>/dev/null || true
     fi
-    ${DC} down -v --remove-orphans 2>/dev/null || true
+    "${DC[@]}" down -v --remove-orphans 2>/dev/null || true
     rm -f "${WEBHOOK_LOG}" "${ALERT_CONFIG}"
     if [ -n "${E2E_VENV:-}" ] && [ -d "${E2E_VENV:-}" ]; then
         rm -rf "${E2E_VENV}"
@@ -53,7 +53,7 @@ require_cmd jq
 require_cmd python3
 
 psql_cmd() {
-    ${DC} exec -T timescaledb \
+    "${DC[@]}" exec -T timescaledb \
         psql -U "${DB_USER}" -d "${DB_NAME}" "$@"
 }
 
@@ -131,7 +131,7 @@ echo "Webhook URL: ${WEBHOOK_URL}"
 # -------------------------------------------------------------------
 echo ""
 echo "--- Starting TimescaleDB ---"
-${DC} up -d timescaledb
+"${DC[@]}" up -d timescaledb
 
 echo "--- Waiting for TimescaleDB to be healthy ---"
 for i in $(seq 1 60); do
@@ -242,7 +242,8 @@ CORRELATION_DIR="${PROJECT_DIR}/services/correlation"
 # Reuse the correlation service venv if available (has all needed packages).
 # Fall back to a disposable temp venv otherwise.
 CORR_VENV="${CORRELATION_DIR}/.venv"
-if [ -f "${CORR_VENV}/bin/activate" ]; then
+if [ -f "${CORR_VENV}/bin/activate" ] \
+   && (source "${CORR_VENV}/bin/activate" && python3 -c 'import psycopg2, yaml, requests' 2>/dev/null); then
     echo "  Using existing venv at ${CORR_VENV}"
     source "${CORR_VENV}/bin/activate"
 else
@@ -398,7 +399,7 @@ assert_eq "vix_spike re-fired after cooldown expiry" "2" "${VIX_AFTER_EXPIRY}"
 # -------------------------------------------------------------------
 echo ""
 echo "--- Starting app service for API tests ---"
-${DC} up -d app
+"${DC[@]}" up -d app
 
 echo "--- Waiting for app service ---"
 for i in $(seq 1 90); do
